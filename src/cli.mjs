@@ -8,6 +8,7 @@ import { defaultRegistry } from "./core/registry.mjs";
 import { defaultInstanceRoot } from "./instance/paths.mjs";
 import { ATLAS, atlasStatement } from "./fixtures/atlas.mjs";
 import { CodexNativeRuntime } from "./runtime/codex-native.mjs";
+import { createDashboardServer } from "./dashboard/server.mjs";
 import {
   answerPersonalOnboarding,
   approvePersonalOnboarding,
@@ -59,6 +60,7 @@ function usage() {
       "capture --instance <path> [--text <spanish statement>]",
       "capture confirmed --instance <path> --record <json>",
       "records list --instance <path> [--project-ref <id>] [--types PROJECT,DECISION]",
+      "dashboard --instance <path> [--port 4640] [--principal <id>] [--workspace <id>]",
       "status --instance <path>",
       "prepare --instance <path>",
       "plan --instance <path> [--plan-id <id>]",
@@ -180,6 +182,22 @@ export async function runCli(argv, { registry = defaultRegistry } = {}) {
         projectRef: options.project_ref || null,
         recordTypes: options.types ? options.types.split(",").filter(Boolean) : null,
       }));
+    }
+    else if (command === "dashboard") {
+      const scope = common(options, kernel);
+      const dashboard = await createDashboardServer({
+        kernel,
+        principalId: scope.principalId,
+        workspaceId: scope.workspaceId,
+        port: options.port === undefined ? 4640 : Number(options.port),
+      });
+      print({ url: dashboard.url, host: dashboard.host, port: dashboard.port, read_only: true, workspace_id: scope.workspaceId });
+      const stop = () => dashboard.close().catch(() => {});
+      process.once("SIGINT", stop);
+      process.once("SIGTERM", stop);
+      await dashboard.closed;
+      process.off("SIGINT", stop);
+      process.off("SIGTERM", stop);
     }
     else if (command === "status") print(await kernel.status({ ...common(options, kernel), text: options.text, projectName: options.project || "Atlas" }));
     else if (command === "prepare") print(await kernel.prepareUpdate({ ...common(options, kernel), projectName: options.project || "Atlas", planId: options.plan_id || ATLAS.planId }));

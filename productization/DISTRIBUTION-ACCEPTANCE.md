@@ -4,11 +4,11 @@
 
 Status: `PUBLIC_RELEASE_READY`
 
-Candidate: `ai-os-core@0.1.0-alpha.1`
+Candidate: `ai-os-core@0.1.0-alpha.2`
 
 Target: `https://github.com/afmanu/ai-os`
 
-The distribution is ready for the owner's final publication decision. No remote, push, GitHub repository or public release was created during acceptance.
+The distribution is ready for the owner's final publication decision. No remote was added or changed, and no push, tag or public release was created during this acceptance.
 
 ## Clean installation
 
@@ -25,20 +25,25 @@ Commands executed from the independent distribution:
 
 ```text
 npm ci --ignore-scripts
+npm run build:dashboard
 npm test
 npm run test:generic
+npm run test:dashboard
 ```
 
 Final results:
 
-- Locked packages installed: 5
+- Packages added by clean install: 42; packages audited: 43
 - npm reported vulnerabilities: 0
-- Public product suite: 62/62 PASS
+- Dashboard bundle build: PASS
+- Dashboard source/bundle reproducibility: PASS
+- Public product suite: 64/64 PASS
 - Dedicated generic install test: 1/1 PASS
+- Dedicated dashboard tests: 2/2 PASS
 - PERSONAL validator: 18/18 PASS
 - New model or Codex sessions consumed by tests: 0
 
-The installed `node_modules` directory was removed after validation and is not part of the release candidate.
+The local `node_modules` directory is ignored and excluded from the release candidate.
 
 ## Synthetic ONBOARD acceptance
 
@@ -64,6 +69,17 @@ The dedicated generic test additionally verified:
 - workspace isolation and denial of non-allow-listed files;
 - unchanged source files, HEAD and worktree status after every AI OS operation;
 - Content OS, Meeting Brief and all unselected external capabilities disabled by default.
+
+The dashboard acceptance additionally verified:
+
+- authorized kernel projection without direct SQLite access;
+- a real `WORKSPACE` root connected to projects, sources and capabilities only through authorized membership;
+- stable project clusters, verified relations and evidence-only context;
+- explicit unknowns instead of invented progress, priority, owner or KPI;
+- workspace isolation, loopback-only serving, Host/Origin checks and GET/HEAD-only transport;
+- no store mutation while projecting or browsing;
+- browser-local visual preferences keyed by workspace;
+- desktop and narrow-viewport navigation, node focus, search, filtering and connectivity replay without duplicate labels or critical console errors.
 
 All temporary instances and synthetic repositories were removed after verification.
 
@@ -107,8 +123,8 @@ Codex conversational use requires the user's compatible ChatGPT subscription and
 
 ## Remaining publication actions
 
-1. Create or select the empty public GitHub repository `afmanu/ai-os`.
-2. Add it as `origin` and push `main` plus `v0.1.0-alpha.1` after explicit approval.
+1. Push the committed `main` candidate only after explicit publication approval.
+2. Create and push `v0.1.0-alpha.2` only with that same explicit publication approval.
 3. Verify the hosted Windows and Linux GitHub Actions jobs.
 4. Enable GitHub Private Vulnerability Reporting and verify that the private report button is available.
 

@@ -7,6 +7,7 @@ Esta distribución se construye únicamente desde los grupos enumerados. No se c
 ### Raíz
 
 - `.gitignore`
+- `.gitattributes`
 - `AGENTS.md`
 - `CONTRIBUTING.md`
 - `LICENSE`
@@ -40,6 +41,7 @@ El `LICENSE` raíz contiene el texto oficial completo de Apache License 2.0 apro
 - `src/contextual/profiles.mjs`
 - `src/contextual/semantic-validation.mjs`
 - `src/contextual/sufficiency.mjs`
+- `src/dashboard/**`
 - `src/fixtures/atlas.mjs`
 - `src/instance/paths.mjs`
 - `src/onboarding/personal.mjs`
@@ -71,6 +73,7 @@ Schemas incluidos:
 - `test/content-os-fixture.mjs`
 - `test/content-os-read.test.mjs`
 - `test/contracts.test.mjs`
+- `test/dashboard.test.mjs`
 - `test/generic-core.test.mjs`
 - `test/helpers.mjs`
 - `test/meeting-brief.test.mjs`
@@ -80,6 +83,7 @@ Schemas incluidos:
 - `.agents/skills/ai-os/SKILL.md`
 - `docs/ARCHITECTURE.md`
 - `docs/CAPABILITIES.md`
+- `docs/DASHBOARD.md`
 - `docs/ONBOARDING.md`
 - `productization/ALLOWLIST.md`
 - `productization/RELEASE-MANIFEST.md`

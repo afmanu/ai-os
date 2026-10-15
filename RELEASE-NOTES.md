@@ -1,3 +1,24 @@
+# AI OS v0.1.0-alpha.2 — candidate, not published
+
+This next alpha candidate adds `AI OS Dashboard`, a local read-only Company Holographic Blueprint over an authorized kernel projection.
+
+## Added
+
+- `DashboardGraphProjection@v2` with a real `WORKSPACE` root, stable operational nodes and only persisted, verifiable relations.
+- Holographic blueprint visual system using the configurable presentation identity and the `#FBC92E`, `#FEEAB9`, `#F88E0B`, `#131313` palette without hardcoded company data.
+- Loopback-only GET/HEAD server with Host/Origin validation, fixed routes and restrictive browser headers.
+- Engineered workspace core, deterministic project assemblies, depth planes, directional links, spatial navigation, search, type/state/source filters, assembly focus/history, contextual details, immersive mode, reduced motion and connection trace.
+- Synthetic tests for workspace isolation, no store mutation, localhost restrictions and an empty PERSONAL instance.
+- MIT attribution for adapted AIS-OS 3D Brain interaction components at commit `ce9cb93a1145da5daba84ea37208ec35fd03606e` plus locked 3D dependency notices.
+
+## Boundaries
+
+- No dashboard mutation, second graph store, raw conversation, arbitrary filesystem read, remote hosting, organizational identity claim or deep Codex UI integration.
+- Connection trace visualizes current verified edges and is not a historical timeline.
+- This candidate has not been tagged, pushed or published.
+
+---
+
 # AI OS v0.1.0-alpha.1
 
 First public alpha candidate of AI OS, a persistent and extensible local AI operating system designed to work from Codex while keeping operational authority in a deterministic kernel.

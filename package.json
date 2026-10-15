@@ -1,6 +1,6 @@
 {
   "name": "ai-os-core",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "private": true,
   "type": "module",
   "description": "Persistent, extensible local AI operating system for Codex with explicit permissions and private user instances.",
@@ -21,11 +21,19 @@
   },
   "scripts": {
     "cli": "node --no-warnings ./bin/ai-os.mjs",
+    "dashboard": "node --no-warnings ./bin/ai-os.mjs dashboard",
+    "build:dashboard": "esbuild ./src/dashboard/client/app.js --bundle --format=esm --minify --outfile=./src/dashboard/dist/app.js --target=es2022",
     "test": "npm run test:product",
-    "test:product": "node --no-warnings --test --test-concurrency=1 ./test/atlas.test.mjs ./test/capability-system.test.mjs ./test/codex-native.test.mjs ./test/content-os-read.test.mjs ./test/contracts.test.mjs ./test/generic-core.test.mjs ./test/meeting-brief.test.mjs",
-    "test:generic": "node --no-warnings --test --test-concurrency=1 ./test/generic-core.test.mjs"
+    "test:product": "node --no-warnings --test --test-concurrency=1 ./test/atlas.test.mjs ./test/capability-system.test.mjs ./test/codex-native.test.mjs ./test/content-os-read.test.mjs ./test/contracts.test.mjs ./test/dashboard.test.mjs ./test/generic-core.test.mjs ./test/meeting-brief.test.mjs",
+    "test:generic": "node --no-warnings --test --test-concurrency=1 ./test/generic-core.test.mjs",
+    "test:dashboard": "node --no-warnings --test --test-concurrency=1 ./test/dashboard.test.mjs"
   },
   "dependencies": {
-    "ajv": "8.20.0"
+    "3d-force-graph": "1.80.0",
+    "ajv": "8.20.0",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }

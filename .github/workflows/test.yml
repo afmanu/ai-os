@@ -25,5 +25,9 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
+      - name: Build dashboard bundle
+        run: npm run build:dashboard
+      - name: Verify dashboard bundle is current
+        run: git diff --exit-code -- src/dashboard/dist/app.js
       - name: Run product tests
         run: npm test

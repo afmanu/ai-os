@@ -3,13 +3,13 @@
 ## Public alpha candidate
 
 - Product: `ai-os-core`
-- Version: `0.1.0-alpha.1`
-- Git tag: `v0.1.0-alpha.1`
+- Version: `0.1.0-alpha.2`
+- Git tag: `v0.1.0-alpha.2`
 - Status: `PUBLIC_RELEASE_READY`
 - Public owner: `afmanu`
 - Intended repository: `https://github.com/afmanu/ai-os`
 - Repository description: `Persistent, extensible local AI operating system for Codex with explicit permissions and private user instances.`
-- Authorized source files: 100
+- Authorized source files: 114
 - npm publication: disabled through `private: true`
 
 This candidate is prepared for one final human gate. It has not been pushed, published or released.
@@ -23,6 +23,7 @@ This candidate is prepared for one final human gate. It has not been pushed, pub
 - confirmed capture for projects, objectives, decisions, blockers, commitments, events and evidence;
 - local Git read-only adapter;
 - optional Content OS read adapter;
+- local read-only Company Holographic Blueprint 3D with a verified workspace core, deterministic project assemblies, node cards, search, filters, relations and evidence context;
 - synthetic Atlas and Meeting Brief regression fixtures;
 - validator, public Codex skill, documentation and deterministic product tests;
 - basic Windows and Linux GitHub Actions workflow.
@@ -40,7 +41,7 @@ The exact positive file boundary is recorded in `productization/ALLOWLIST.md`.
 
 ## Privacy inventory
 
-All 100 authorized source files were scanned for identities, emails, profile paths, Windows user directories, synchronized personal paths, credentials, private keys, bearer tokens, API keys, databases, sessions and private traces.
+All 114 authorized source files were scanned for identities, emails, profile paths, Windows user directories, synchronized personal paths, credentials, private keys, bearer tokens, API keys, databases, sessions and private traces.
 
 - Personal identities or email addresses: 0
 - Personal absolute paths: 0
@@ -58,7 +59,7 @@ The owner approved Apache-2.0. Root `LICENSE` exactly matches the official Apach
 
 `sha256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`
 
-`package.json` and `package-lock.json` declare `Apache-2.0`. `THIRD-PARTY-NOTICES.md` records the locked npm dependencies plus the two referenced GitHub Actions. No third-party source or binary is vendored in this repository.
+`package.json` and `package-lock.json` declare `Apache-2.0`. `THIRD-PARTY-NOTICES.md` records the locked npm dependencies, the two referenced GitHub Actions and the MIT provenance of the adapted AIS-OS 3D Brain patterns. The original upstream license and notice are preserved under `src/dashboard/vendor/`; no upstream branding or framework is incorporated.
 
 ## Dependencies
 
@@ -67,6 +68,9 @@ The owner approved Apache-2.0. Root `LICENSE` exactly matches the official Apach
 - `fast-uri@3.1.8` — BSD-3-Clause
 - `json-schema-traverse@1.0.0` — MIT
 - `require-from-string@2.0.2` — MIT
+- `three@0.185.1` — MIT
+- `3d-force-graph@1.80.0` — MIT
+- `esbuild@0.28.2` — MIT, development dependency
 - `actions/checkout@v4` — MIT, referenced only
 - `actions/setup-node@v4` — MIT, referenced only
 
@@ -74,9 +78,12 @@ The owner approved Apache-2.0. Root `LICENSE` exactly matches the official Apach
 
 - Node.js: `v24.11.1`
 - npm: `11.6.2`
-- `npm ci --ignore-scripts`: PASS, five locked packages, zero reported vulnerabilities
-- Product suite: 62/62 PASS
+- `npm ci --ignore-scripts`: PASS, 42 packages added, 43 audited, zero reported vulnerabilities
+- Dashboard bundle build: PASS
+- Dashboard source/bundle reproducibility: PASS
+- Product suite: 64/64 PASS
 - Dedicated generic installation test: 1/1 PASS
+- Dedicated dashboard tests: 2/2 PASS
 - PERSONAL validator: 18/18 PASS
 - Synthetic ONBOARD: `DRAFT → PREVIEWED → CREATED`, zero projects and zero tasks
 - Model API key required: no
@@ -98,4 +105,4 @@ Global Git configuration must remain unchanged.
 
 ## Remaining human gate
 
-Publication still requires explicit authorization to create or select the GitHub repository, add `origin`, push `main` and push `v0.1.0-alpha.1`. After publication, the owner must enable and verify GitHub Private Vulnerability Reporting and confirm the hosted Windows/Linux workflow results.
+Publication still requires explicit authorization to push the committed candidate and create `v0.1.0-alpha.2`. After publication, the owner must enable and verify GitHub Private Vulnerability Reporting and confirm the hosted Windows/Linux workflow results.

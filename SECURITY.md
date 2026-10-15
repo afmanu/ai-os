@@ -24,6 +24,12 @@ Tras una interrupción o un efecto incierto, la recuperación consulta receipts 
 
 El adapter Git local limita AI OS a raíces y documentos configurados explícitamente y rechaza traversal, links y archivos no allow-listed. Esta frontera es contractual: no impide que otro código confiable o Codex acceda al host con los permisos del proceso.
 
+## Dashboard local
+
+El dashboard no lee SQLite desde el navegador. `AiOsKernel.dashboardProjection()` construye una vista autorizada después de resolver identidad/workspace y validar `records.read`; tareas y decisiones internas requieren además sus operaciones READ existentes. La respuesta omite paths privados, configuración completa de bindings, secretos y valores de evidencia no necesarios.
+
+El servidor escucha exclusivamente en `127.0.0.1`, valida Host y Origin, no habilita CORS amplio, acepta solo GET/HEAD, sirve una allow-list fija y aplica CSP. No ofrece parámetros de filesystem, apertura de archivos, ejecución de comandos ni endpoints mutadores. No debe exponerse mediante port forwarding o reverse proxy sin un threat model y una decisión de producto nuevos.
+
 Content OS es opcional. Ninguna instalación nueva lo descubre o configura automáticamente.
 
 ## Backup y recuperación

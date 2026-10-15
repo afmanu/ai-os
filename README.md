@@ -11,6 +11,7 @@ No es un agente autónomo ni un sandbox de seguridad. Codex aporta interpretaci�
 - Persistencia SQLite local para records confirmados, evidencia, resultados y estado operativo.
 - Capabilities versionadas y explícitas. Las fuentes externas empiezan desactivadas.
 - Un adapter read-only para documentos allow-listed y metadatos de repositorios Git seleccionados por el usuario.
+- Un Company Holographic Blueprint 3D local y read-only, centrado en el workspace autorizado y su conocimiento empresarial.
 - Un runtime Codex-native que produce candidatos; nunca concede permisos ni ejecuta por sí mismo.
 
 Atlas aparece únicamente como fixture ficticio de regresión. Content OS es una integración opcional, no una dependencia del producto.
@@ -66,6 +67,14 @@ npm run cli -- records list --instance $instance
 npm run cli -- capability list --instance $instance
 ```
 
+7. Abre el Company Holographic Blueprint sobre la misma instancia:
+
+```powershell
+npm run dashboard -- --instance $instance
+```
+
+La URL predeterminada es `http://127.0.0.1:4640`. El workspace es el núcleo real y conecta proyectos, fuentes y capabilities mediante relaciones verificadas. El dashboard despliega proyectos como ensamblajes 3D deterministas con tarjetas, planos de profundidad, conexiones direccionales, búsqueda, filtros, foco por ensamblaje, panel contextual, scan pausable, modo inmersivo y connection trace. No persiste otro grafo ni permite mutaciones. Consulta [Dashboard](docs/DASHBOARD.md).
+
 ## Core e Instance
 
 `PRODUCT CORE` contiene código, contratos, documentación y fixtures sintéticos. No contiene datos de usuario.
@@ -116,6 +125,7 @@ Codex puede conservar acceso general al filesystem del host. Las allow-lists del
 ```powershell
 npm test
 npm run test:generic
+npm run test:dashboard
 ```
 
 La suite pública incluye kernel, contratos, capabilities, runtime Codex-native, integración Content OS opcional, onboarding genérico y adapter Git read-only. Todos los datos de test son ficticios y temporales.
@@ -126,7 +136,7 @@ La suite pública incluye kernel, contratos, capabilities, runtime Codex-native,
 - Módulos locales confiables ejecutados in-process y sin sandbox.
 - Estado local sin cifrado gestionado ni secret manager.
 - Backup/restore no coordina todavía todos los stores opcionales.
-- Sin scheduler, dashboard, agentes adicionales, memoria vectorial ni publicación automática.
+- Sin scheduler, agentes adicionales, memoria vectorial ni publicación automática. El dashboard local es exclusivamente read-only.
 - El adapter Git aplica read-only por contrato y verificación; no es aislamiento del proceso a nivel de sistema operativo.
 - La calidad semántica del modelo depende del contexto y no se presenta como garantía de seguridad.
 
@@ -134,4 +144,4 @@ Consulta [Arquitectura](docs/ARCHITECTURE.md), [Capabilities](docs/CAPABILITIES.
 
 ## Licencia
 
-AI OS se distribuye bajo Apache License 2.0. Consulta [LICENSE](LICENSE).
+AI OS se distribuye bajo Apache License 2.0. El dashboard contiene adaptaciones MIT atribuidas a Nate Herk y dependencias 3D con sus avisos separados. Consulta [LICENSE](LICENSE), [Third-party notices](THIRD-PARTY-NOTICES.md) y [Dashboard](docs/DASHBOARD.md).

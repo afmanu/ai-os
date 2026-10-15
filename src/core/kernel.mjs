@@ -11,6 +11,8 @@ import { defaultRegistry } from "./registry.mjs";
 import { buildSituation } from "./situation.mjs";
 import { KernelStore } from "./store.mjs";
 import { canonicalJson, iso, measure, sha256, systemClock } from "./utils.mjs";
+import { authorizedDashboardReadModel } from "../dashboard/read-model.mjs";
+import { buildDashboardProjection } from "../dashboard/projection.mjs";
 
 const PERSONAL_RECORD_TYPES = new Set(["PROJECT", "OBJECTIVE", "DECISION", "BLOCKER", "COMMITMENT", "EVENT", "EVIDENCE"]);
 const PERSONAL_RECORD_FIELDS = new Set(["event_id", "record_type", "record_id", "project_ref", "statement", "name", "objective", "status", "references", "confirmed", "occurred_at"]);
@@ -224,6 +226,17 @@ export class AiOsKernel {
       records,
       raw_conversation_included: false,
     };
+  }
+
+  dashboardProjection({ principalId = null, workspaceId = null } = {}) {
+    const identity = this.identity(principalId, workspaceId);
+    const readModel = authorizedDashboardReadModel({
+      store: this.store,
+      registry: this.registry,
+      identity,
+      actionPolicy: this.policies(identity.workspace_id).action,
+    });
+    return buildDashboardProjection(readModel, { clock: this.clock });
   }
 
   async captureAtlasStatement({

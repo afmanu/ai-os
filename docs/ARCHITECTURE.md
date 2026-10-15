@@ -9,6 +9,14 @@ AI OS separa dos autoridades:
 
 La conversación no es el store. El kernel persiste records estructurados confirmados y referencias a evidencia, no el historial bruto.
 
+## Dashboard
+
+`AI OS Dashboard` es una proyección regenerable, no otra autoridad:
+
+`kernel state → authorized read model → graph projection → loopback server → 3D client`
+
+El kernel valida identidad, workspace y las operaciones READ existentes antes de construir `DashboardGraphProjection@v2`. El nodo raíz `WORKSPACE` procede del perfil autorizado y conecta proyectos, fuentes y capabilities por pertenencia ya registrada; no añade identidad organizativa, roles ni KPIs. El navegador no accede a SQLite, source-binding paths ni conversaciones. El servidor escucha solo en `127.0.0.1`, acepta GET/HEAD y mantiene una allow-list fija de endpoints y assets. Toda mutación continúa en Codex y el kernel.
+
 ## Flujo de autoridad
 
 `request → identity/workspace → authorized context → deterministic path or Codex candidate → kernel validation → policy → read/plan/effect → independent verification → durable result`

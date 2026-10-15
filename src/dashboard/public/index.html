@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>AI OS Dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main id="app" aria-busy="true">
+    <div id="graph" aria-label="Interactive 3D graph of authorized AI OS state"></div>
+
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span>OS</span></div>
+        <div>
+          <strong>AI OS</strong>
+          <span>COMPANY HOLOGRAPHIC BLUEPRINT</span>
+        </div>
+      </div>
+      <div class="workspace">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span id="workspace-name">Loading instance</span>
+        <span class="read-only">READ ONLY</span>
+      </div>
+      <div class="search" role="search">
+        <label class="sr-only" for="search-input">Search nodes</label>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.2-4.2m1.2-5.3a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z"/></svg>
+        <input id="search-input" type="search" placeholder="Search the company graph…" autocomplete="off">
+        <kbd>/</kbd>
+        <div id="search-results" class="search-results glass" hidden></div>
+      </div>
+      <button id="btn-cinema" class="icon-button" type="button" aria-pressed="false" title="Immersive mode">Immersive</button>
+    </header>
+
+    <aside id="filters" class="filter-panel glass" aria-label="Graph filters">
+      <div class="panel-heading">
+        <span>MAP LAYERS</span>
+        <button id="btn-clear-filters" type="button">All</button>
+      </div>
+      <div id="type-filters" class="filter-list"></div>
+      <div class="filter-section">
+        <label for="state-filter">STATE</label>
+        <select id="state-filter"><option value="">All states</option></select>
+      </div>
+      <details class="filter-section">
+        <summary>SOURCES</summary>
+        <div id="source-filters" class="source-list"></div>
+      </details>
+      <div class="legend-note"><span></span> Core → projects → verified work</div>
+    </aside>
+
+    <nav class="camera-controls glass" aria-label="Camera controls">
+      <button id="btn-overview" type="button" title="Global overview">Full model</button>
+      <button id="btn-back" type="button" title="Previous focus" disabled>Back</button>
+      <button id="btn-focus" type="button" title="Focus selected node" disabled>Focus</button>
+      <button id="btn-reset" type="button" title="Reset camera">Reset</button>
+      <span class="divider"></span>
+      <button id="btn-motion" type="button" aria-pressed="true" title="Pause or resume holographic scan">Pause scan</button>
+      <button id="btn-replay" type="button" title="Trace real connectivity">Trace connections</button>
+    </nav>
+
+    <section id="overview" class="overview glass" aria-label="Workspace summary">
+      <div><strong id="count-projects">0</strong><span>Projects</span></div>
+      <div><strong id="count-blockers">0</strong><span>Open blockers</span></div>
+      <div><strong id="count-commitments">0</strong><span>Open commitments</span></div>
+      <div><strong id="count-evidence">0</strong><span>Evidence</span></div>
+      <div class="overview-meta"><span id="count-relations">0 relations</span><span id="updated-at">Not loaded</span></div>
+    </section>
+
+    <aside id="detail" class="detail glass" aria-label="Selected node details" hidden>
+      <div class="detail-topline">
+        <span id="detail-type" class="type-pill">NODE</span>
+        <button id="btn-close-detail" class="close-button" type="button" aria-label="Close details">×</button>
+      </div>
+      <h1 id="detail-name"></h1>
+      <div id="detail-state" class="detail-state"></div>
+      <p id="detail-description" class="detail-description"></p>
+      <div id="detail-facts" class="detail-facts"></div>
+      <div id="detail-relations" class="detail-section"></div>
+      <div id="detail-evidence" class="detail-section"></div>
+      <div id="detail-unknowns" class="detail-section"></div>
+      <div class="detail-actions">
+        <button id="btn-detail-focus" type="button">Focus cluster</button>
+        <button id="btn-copy-context" type="button">Copy context</button>
+      </div>
+    </aside>
+
+    <section id="empty-state" class="empty-state glass" hidden>
+      <span class="empty-map" aria-hidden="true"><i></i><i></i><i></i></span>
+      <p>YOUR COMPANY GRAPH IS READY</p>
+      <h1>No confirmed operational entities yet.</h1>
+      <span>Capture a project, goal, decision, commitment, blocker, event or evidence through Codex and the kernel. This view never fabricates sample data.</span>
+    </section>
+
+    <div id="loading" class="loading">
+      <div class="loader-mark"><span></span></div>
+      <strong>ASSEMBLING COMPANY MODEL</strong>
+      <span>Projecting the authorized kernel state</span>
+    </div>
+    <div id="replay-status" class="replay-status glass" hidden>
+      <strong>CONNECTION TRACE</strong>
+      <span id="replay-copy">Visualizing persisted relationships — not a historical timeline.</span>
+      <div><i id="replay-progress"></i></div>
+    </div>
+    <div id="toast" class="toast glass" role="status" hidden></div>
+    <div class="watermark">AUTHORIZED SPATIAL MODEL · READ ONLY</div>
+  </main>
+  <script type="module" src="/dist/app.js"></script>
+</body>
+</html>
