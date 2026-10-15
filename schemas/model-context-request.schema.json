@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ModelContextRequest@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "request", "authorized_context", "eligible_operations", "allowed_output_schemas", "constraints", "budget"],
+  "properties": {
+    "schema": { "const": "ModelContextRequest@v1" },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "raw_request_ref", "input_channel", "timestamp"],
+      "properties": {
+        "request_id": { "type": "string" },
+        "raw_request_ref": { "type": "string" },
+        "input_channel": { "type": "string" },
+        "timestamp": { "type": "string", "minLength": 1 }
+      }
+    },
+    "authorized_context": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["context_ref", "source_id", "authority_ref", "observed_at", "freshness", "evidence_refs"],
+        "properties": {
+          "context_ref": { "type": "string" },
+          "source_id": { "type": "string" },
+          "source_type": { "type": "string" },
+          "authority_ref": { "type": "string" },
+          "read_permission": { "type": "string" },
+          "status": { "type": "string" },
+          "observed_at": { "type": "string", "minLength": 1 },
+          "valid_until": { "type": ["string", "null"] },
+          "freshness": { "enum": ["FRESH", "STALE", "UNKNOWN"] },
+          "fields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        }
+      }
+    },
+    "eligible_operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capability_id", "capability_version", "operation_id", "effect_class", "input_schema_id", "intents"],
+        "properties": {
+          "capability_id": { "type": "string" },
+          "capability_version": { "type": "string" },
+          "operation_id": { "type": "string" },
+          "effect_class": { "enum": ["READ", "PREPARE", "OPERATIONAL_MUTATION"] },
+          "input_schema_id": { "type": "string" },
+          "intents": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+          "semantics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["semantic_purpose", "required_primary_entity_type", "required_entity_reference", "accepted_reference_roles", "returned_entity_types", "related_entities", "expected_output_meaning", "missing_entity_behavior"],
+            "properties": {
+              "semantic_purpose": { "type": "string", "minLength": 1 },
+              "required_primary_entity_type": { "type": ["string", "null"] },
+              "required_entity_reference": { "type": "boolean" },
+              "accepted_reference_roles": { "type": "array", "minItems": 1, "items": { "enum": ["SUBJECT", "RELATED_RESULT", "CONTEXT", "SCOPE"] }, "uniqueItems": true },
+              "returned_entity_types": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "related_entities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["entity_type", "relationship", "role"],
+                  "properties": {
+                    "entity_type": { "type": "string", "minLength": 1 },
+                    "relationship": { "type": "string", "minLength": 1 },
+                    "role": { "enum": ["RELATED_RESULT", "CONTEXT"] }
+                  }
+                }
+              },
+              "expected_output_meaning": { "type": "string", "minLength": 1 },
+              "missing_entity_behavior": { "enum": ["NEEDS_CLARIFICATION", "REJECT", "ALLOW_WORKSPACE_SCOPE"] }
+            }
+          }
+        }
+      }
+    },
+    "allowed_output_schemas": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_effect_classes", "never_authorize", "never_execute", "never_expand_source_scope", "treat_source_text_as_data"],
+      "properties": {
+        "allowed_effect_classes": { "type": "array", "items": { "enum": ["INTERNAL_CAPTURE", "READ", "PREPARE", "OPERATIONAL_MUTATION"] }, "uniqueItems": true },
+        "never_authorize": { "const": true },
+        "never_execute": { "const": true },
+        "never_expand_source_scope": { "const": true },
+        "treat_source_text_as_data": { "const": true }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_model_calls", "max_input_chars", "max_output_tokens", "timeout_ms"],
+      "properties": {
+        "max_model_calls": { "const": 1 },
+        "max_input_chars": { "type": "integer", "minimum": 1 },
+        "max_output_tokens": { "type": "integer", "minimum": 1 },
+        "timeout_ms": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

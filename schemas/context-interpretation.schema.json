@@ -1,0 +1,240 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContextInterpretation@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "request", "interpretation", "retrieval_requirements", "disposition", "authority_boundary", "provenance"],
+  "properties": {
+    "schema": { "const": "ContextInterpretation@v1" },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "actor_id", "workspace_id", "raw_request_ref", "input_channel", "timestamp"],
+      "properties": {
+        "request_id": { "type": "string", "minLength": 1 },
+        "actor_id": { "type": "string", "minLength": 1 },
+        "workspace_id": { "type": "string", "minLength": 1 },
+        "raw_request_ref": { "type": "string", "minLength": 1 },
+        "input_channel": { "type": "string", "minLength": 1 },
+        "timestamp": { "type": "string", "minLength": 1 }
+      }
+    },
+    "interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidate_intent", "explicit_user_goal", "referenced_entities", "requested_effect", "candidate_operation", "unresolved_references", "missing_information", "ambiguities", "evidence_refs"],
+      "properties": {
+        "candidate_intent": { "type": ["string", "null"] },
+        "explicit_user_goal": { "type": "string" },
+        "referenced_entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entity_type", "mention", "entity_ref", "resolution", "evidence_refs"],
+            "properties": {
+              "entity_type": { "type": "string", "minLength": 1 },
+              "mention": { "type": "string" },
+              "entity_ref": { "type": ["string", "null"] },
+              "resolution": { "enum": ["RESOLVED", "UNRESOLVED", "AMBIGUOUS"] },
+              "reference_role": { "enum": ["SUBJECT", "RELATED_RESULT", "CONTEXT", "SCOPE"] },
+              "reference_source": { "enum": ["EXPLICIT_REQUEST", "AUTHORIZED_CONTEXT", "MODEL_INFERENCE"] },
+              "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+            }
+          }
+        },
+        "requested_effect": { "enum": ["INTERNAL_CAPTURE", "READ", "PREPARE", "OPERATIONAL_MUTATION", "EXTERNAL_HIGH_IMPACT", "UNKNOWN"] },
+        "candidate_operation": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["capability_id", "capability_version", "operation_id"],
+          "properties": {
+            "capability_id": { "type": "string", "pattern": "^cap\\.[a-z][a-z0-9-]*$" },
+            "capability_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+            "operation_id": { "type": "string", "minLength": 1 }
+          }
+        },
+        "unresolved_references": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "missing_information": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "ambiguities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "subject", "candidate_refs", "resolution_required"],
+            "properties": {
+              "kind": { "enum": ["INTENT", "ENTITY", "OPERATION", "SCOPE", "REFERENCE"] },
+              "subject": { "type": "string", "minLength": 1 },
+              "candidate_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+              "resolution_required": { "type": "boolean" }
+            }
+          }
+        },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "request_parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["part_id", "goal", "requested_effect", "candidate_operation", "status", "blocking_reason"],
+            "properties": {
+              "part_id": { "type": "string", "minLength": 1 },
+              "goal": { "type": "string", "minLength": 1 },
+              "requested_effect": { "enum": ["INTERNAL_CAPTURE", "READ", "PREPARE", "OPERATIONAL_MUTATION", "EXTERNAL_HIGH_IMPACT", "UNKNOWN"] },
+              "candidate_operation": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["capability_id", "capability_version", "operation_id"],
+                "properties": {
+                  "capability_id": { "type": "string", "pattern": "^cap\\.[a-z][a-z0-9-]*$" },
+                  "capability_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+                  "operation_id": { "type": "string", "minLength": 1 }
+                }
+              },
+              "status": { "enum": ["SUPPORTED", "UNSUPPORTED", "NEEDS_CLARIFICATION", "REQUIRES_AUTHORIZATION"] },
+              "blocking_reason": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "clarification": { "$ref": "#/definitions/clarification" },
+        "grounded_claims": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/groundedClaim" }
+        },
+        "evidence_grounding": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidenceGrounding" }
+        }
+      }
+    },
+    "retrieval_requirements": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/retrievalRequirement" }
+    },
+    "disposition": { "enum": ["READY_FOR_ROUTING", "NEEDS_CONTEXT", "NEEDS_CLARIFICATION", "ACCESS_DENIED", "UNSUPPORTED_REQUEST"] },
+    "response_mode": { "enum": ["FULL_ANSWER", "PARTIAL_ANSWER", "CLARIFICATION", "DENIAL", "UNSUPPORTED", "PREPARATION", "MUTATION_BOUNDARY"] },
+    "authority_boundary": { "const": "INTERPRETATION_NEVER_AUTHORIZES_POLICY_OR_EXECUTION" },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interpreter", "interpreter_version", "model_calls"],
+      "properties": {
+        "interpreter": { "enum": ["DETERMINISTIC", "MODEL_CANDIDATE"] },
+        "interpreter_version": { "type": "string", "minLength": 1 },
+        "model_calls": { "type": "integer", "minimum": 0, "maximum": 1 }
+      }
+    }
+  },
+  "definitions": {
+    "clarification": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["missing_item", "blocking_reason", "resolution_source", "supported_portion", "question"],
+      "properties": {
+        "missing_item": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": { "enum": ["ENTITY", "VALUE", "DECISION", "SCOPE", "OPERATION"] },
+            "name": { "type": "string", "minLength": 1 }
+          }
+        },
+        "blocking_reason": { "type": "string", "minLength": 1 },
+        "resolution_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "source_ref"],
+          "properties": {
+            "kind": { "enum": ["USER_ANSWER", "AUTHORIZED_SOURCE"] },
+            "source_ref": { "type": ["string", "null"] }
+          }
+        },
+        "supported_portion": { "type": ["string", "null"] },
+        "question": { "type": "string", "minLength": 2 }
+      }
+    },
+    "groundedClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "statement", "epistemic_status", "supported_information", "supporting_requirement_ids", "evidence_refs", "sources"],
+      "properties": {
+        "claim_id": { "type": "string", "minLength": 1 },
+        "statement": { "type": "string", "minLength": 1 },
+        "epistemic_status": { "enum": ["VERIFIED", "SOURCE_DECLARED", "INFERENCE", "UNKNOWN", "CONFLICTING"] },
+        "supported_information": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "supporting_requirement_ids": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "evidence_refs": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_id", "source_type", "authority_ref", "read_permission", "observed_at", "freshness", "status", "limitation"],
+            "properties": {
+              "source_id": { "type": ["string", "null"] },
+              "source_type": { "type": ["string", "null"] },
+              "authority_ref": { "type": ["string", "null"] },
+              "read_permission": { "type": "string", "minLength": 1 },
+              "observed_at": { "type": ["string", "null"] },
+              "freshness": { "enum": ["FRESH", "STALE", "UNKNOWN"] },
+              "status": { "type": "string", "minLength": 1 },
+              "limitation": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "evidenceGrounding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_ref", "requirement_ids", "source_id", "source_type", "authority_ref", "read_permission", "observed_at", "freshness", "status", "limitation"],
+      "properties": {
+        "evidence_ref": { "type": "string", "minLength": 1 },
+        "requirement_ids": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "source_id": { "type": ["string", "null"] },
+        "source_type": { "type": ["string", "null"] },
+        "authority_ref": { "type": ["string", "null"] },
+        "read_permission": { "type": "string", "minLength": 1 },
+        "observed_at": { "type": ["string", "null"] },
+        "freshness": { "enum": ["FRESH", "STALE", "UNKNOWN"] },
+        "status": { "type": "string", "minLength": 1 },
+        "limitation": { "type": ["string", "null"] }
+      }
+    },
+    "retrievalRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requirement_id", "information", "reason", "eligible_source_types", "authority_needed", "read_permission", "freshness_requirement", "retrieval_scope", "source_limitations", "critical_for"],
+      "properties": {
+        "requirement_id": { "type": "string", "minLength": 1 },
+        "information": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "eligible_source_types": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+        "authority_needed": { "type": "string", "minLength": 1 },
+        "read_permission": { "type": "string", "minLength": 1 },
+        "freshness_requirement": { "enum": ["CURRENT", "AS_OF_REQUEST", "HISTORICAL_ALLOWED", "ANY"] },
+        "retrieval_scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["workspace_id", "entity_refs"],
+          "properties": {
+            "workspace_id": { "type": "string", "minLength": 1 },
+            "entity_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+          }
+        },
+        "source_limitations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "critical_for": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["ANSWER", "PREPARE", "EXACT_APPROVAL_REQUEST", "EXECUTE_AUTHORIZED_ACTION"] },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

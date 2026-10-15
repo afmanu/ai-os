@@ -1,0 +1,161 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "CapabilityManifest@v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "manifest_version", "capability_id", "capability_version", "competence", "triggers", "dependencies", "operations"],
+  "properties": {
+    "schema": { "const": "CapabilityManifest@v2" },
+    "manifest_version": { "const": 2 },
+    "capability_id": { "type": "string", "pattern": "^cap\\.[a-z][a-z0-9-]*$" },
+    "capability_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "competence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "summary"],
+      "properties": {
+        "domain": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "triggers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intents", "explicit_invocation"],
+      "properties": {
+        "intents": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "explicit_invocation": { "type": "boolean" }
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "sources", "capabilities"],
+      "properties": {
+        "runtime": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "sources": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "capabilities": { "type": "array", "items": { "type": "string", "pattern": "^cap\\.[a-z][a-z0-9-]*@[0-9]+\\.[0-9]+\\.[0-9]+$" }, "uniqueItems": true }
+      }
+    },
+    "source_contracts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_system", "core_version", "schema_id", "authority"],
+        "properties": {
+          "source_system": { "type": "string", "minLength": 1 },
+          "core_version": { "type": "string", "minLength": 1 },
+          "schema_id": { "type": "string", "minLength": 1 },
+          "authority": { "enum": ["external", "internal", "human", "derived"] }
+        }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation_id", "effect_class", "triggers", "input", "output", "permission", "side_effects", "execution", "verification"],
+        "properties": {
+          "operation_id": { "type": "string", "pattern": "^[a-z][a-z0-9.-]*$" },
+          "effect_class": { "enum": ["INTERNAL_CAPTURE", "READ", "PREPARE", "OPERATIONAL_MUTATION", "EXTERNAL_HIGH_IMPACT"] },
+          "semantics": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["semantic_purpose", "required_primary_entity_type", "required_entity_reference", "accepted_reference_roles", "returned_entity_types", "related_entities", "expected_output_meaning", "missing_entity_behavior"],
+            "properties": {
+              "semantic_purpose": { "type": "string", "minLength": 1 },
+              "required_primary_entity_type": { "type": ["string", "null"] },
+              "required_entity_reference": { "type": "boolean" },
+              "accepted_reference_roles": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "enum": ["SUBJECT", "RELATED_RESULT", "CONTEXT", "SCOPE"] },
+                "uniqueItems": true
+              },
+              "returned_entity_types": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "related_entities": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["entity_type", "relationship", "role"],
+                  "properties": {
+                    "entity_type": { "type": "string", "minLength": 1 },
+                    "relationship": { "type": "string", "minLength": 1 },
+                    "role": { "enum": ["RELATED_RESULT", "CONTEXT"] }
+                  }
+                }
+              },
+              "expected_output_meaning": { "type": "string", "minLength": 1 },
+              "missing_entity_behavior": { "enum": ["NEEDS_CLARIFICATION", "REJECT", "ALLOW_WORKSPACE_SCOPE"] }
+            }
+          },
+          "triggers": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["intents"],
+            "properties": {
+              "intents": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+            }
+          },
+          "input": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schema_id", "required_context", "missing_input_behavior"],
+            "properties": {
+              "schema_id": { "type": "string", "minLength": 1 },
+              "required_context": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "missing_input_behavior": { "enum": ["REJECT", "NEEDS_CLARIFICATION"] }
+            }
+          },
+          "output": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schema_id", "artifact_kind", "result_references"],
+            "properties": {
+              "schema_id": { "type": "string", "minLength": 1 },
+              "artifact_kind": { "type": ["string", "null"] },
+              "result_references": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+            }
+          },
+          "permission": { "type": "string", "minLength": 1 },
+          "side_effects": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reads", "writes", "write_scope"],
+            "properties": {
+              "reads": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "writes": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "write_scope": { "enum": ["none", "kernel_instance", "declared_resource"] }
+            }
+          },
+          "execution": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entrypoint", "timeout_ms", "failure_contract", "idempotency"],
+            "properties": {
+              "entrypoint": { "type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z][a-z0-9.-]*$" },
+              "timeout_ms": { "type": "integer", "minimum": 1, "maximum": 300000 },
+              "failure_contract": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "idempotency": { "enum": ["not_applicable", "scoped_durable"] }
+            }
+          },
+          "verification": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["entrypoint", "postconditions", "evidence", "read_back"],
+            "properties": {
+              "entrypoint": { "type": "string", "pattern": "^[a-z][a-z0-9-]*:[a-z][a-z0-9.-]*$" },
+              "postconditions": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "evidence": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "read_back": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

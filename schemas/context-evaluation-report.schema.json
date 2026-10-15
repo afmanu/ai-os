@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContextEvaluationReport@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "benchmark_id", "benchmark_version", "runner_version", "generated_at", "model_calls", "network_calls", "kernel_writes", "totals", "metrics", "classifications", "by_domain", "by_split", "error_categories", "cases"],
+  "properties": {
+    "schema": { "const": "ContextEvaluationReport@v1" },
+    "benchmark_id": { "type": "string" },
+    "benchmark_version": { "type": "integer" },
+    "runner_version": { "type": "string" },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "model_calls": { "const": 0 },
+    "network_calls": { "const": 0 },
+    "kernel_writes": { "const": 0 },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "duration_ms", "avg_case_ms", "min_case_ms", "max_case_ms"],
+      "properties": {
+        "cases": { "type": "integer", "minimum": 1 },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "avg_case_ms": { "type": "number", "minimum": 0 },
+        "min_case_ms": { "type": "number", "minimum": 0 },
+        "max_case_ms": { "type": "number", "minimum": 0 }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["passed", "total", "rate"],
+        "properties": {
+          "passed": { "type": "integer", "minimum": 0 },
+          "total": { "type": "integer", "minimum": 0 },
+          "rate": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "classifications": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+    "by_domain": { "type": "object", "additionalProperties": { "$ref": "#/definitions/groupSummary" } },
+    "by_split": { "type": "object", "additionalProperties": { "$ref": "#/definitions/groupSummary" } },
+    "error_categories": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "split", "domain", "classification", "error_category", "latency_ms", "checks", "observed"],
+        "properties": {
+          "case_id": { "type": "string" },
+          "split": { "type": "string" },
+          "domain": { "type": "string" },
+          "classification": { "enum": ["TASK_SUCCESS", "SAFE_FAILURE", "INCORRECT_ROUTING", "UNSUPPORTED", "UNVERIFIED"] },
+          "error_category": { "type": ["string", "null"] },
+          "latency_ms": { "type": "number", "minimum": 0 },
+          "checks": { "type": "object", "additionalProperties": { "type": "boolean" } },
+          "observed": { "type": "object" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "groupSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "task_success", "safe_failure", "incorrect_routing", "unsupported", "unverified"],
+      "properties": {
+        "cases": { "type": "integer" },
+        "task_success": { "type": "integer" },
+        "safe_failure": { "type": "integer" },
+        "incorrect_routing": { "type": "integer" },
+        "unsupported": { "type": "integer" },
+        "unverified": { "type": "integer" }
+      }
+    }
+  }
+}

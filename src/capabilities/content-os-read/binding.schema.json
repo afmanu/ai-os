@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContentOsBinding@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source_id", "source_instance_id", "core_root", "instance_root", "core_version", "state_schema_version", "scope"],
+  "properties": {
+    "source_id": { "type": "string", "pattern": "^SRC-CONTENT-OS-[A-Z0-9-]+$" },
+    "source_instance_id": { "type": "string", "pattern": "^COS-[A-Z0-9-]+$" },
+    "core_root": { "type": "string", "minLength": 1 },
+    "instance_root": { "type": "string", "minLength": 1 },
+    "core_version": { "const": "0.1.0-alpha.1" },
+    "state_schema_version": { "const": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["records", "allowed_artifact_roots", "max_state_bytes", "max_artifact_bytes"],
+      "properties": {
+        "records": {
+          "type": "array",
+          "items": { "enum": ["CONTENT", "OUTPUT"] },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "allowed_artifact_roots": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$" },
+          "uniqueItems": true
+        },
+        "max_state_bytes": { "type": "integer", "minimum": 1024, "maximum": 5242880 },
+        "max_artifact_bytes": { "type": "integer", "minimum": 1, "maximum": 1048576 }
+      }
+    }
+  }
+}

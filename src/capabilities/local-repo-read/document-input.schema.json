@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "LocalRepositoryDocumentInput@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workspace_id", "repository_id", "path"],
+  "properties": {
+    "workspace_id": { "type": "string", "minLength": 1 },
+    "repository_id": { "type": "string", "pattern": "^REPO-[A-Z0-9-]+$" },
+    "path": { "type": "string", "minLength": 1 }
+  }
+}

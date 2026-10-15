@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "LocalRepositoryReadResult@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "kind", "availability", "source", "observed_at", "payload"],
+  "properties": {
+    "schema": { "const": "LocalRepositoryReadResult@v1" },
+    "kind": { "enum": ["DOCUMENT", "DECISIONS", "GIT"] },
+    "availability": { "enum": ["AVAILABLE", "ABSENT", "STALE"] },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "repository_id", "locator", "snapshot_hash", "source_version", "authority", "freshness", "limitations"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "repository_id": { "type": "string", "minLength": 1 },
+        "locator": { "type": "string", "minLength": 1 },
+        "snapshot_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "source_version": { "type": "integer", "minimum": 1 },
+        "authority": { "const": "EXTERNAL_LOCAL_READ_ONLY" },
+        "freshness": { "enum": ["SNAPSHOT_AT_READ", "STALE_AT_READ", "ABSENT_AT_READ"] },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "observed_at": { "type": "string", "minLength": 1 },
+    "payload": { "type": ["object", "null"] }
+  }
+}

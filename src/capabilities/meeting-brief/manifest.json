@@ -1,0 +1,113 @@
+{
+  "schema": "CapabilityManifest@v2",
+  "manifest_version": 2,
+  "capability_id": "cap.meeting-brief",
+  "capability_version": "0.1.0",
+  "competence": {
+    "domain": "meetings-and-decisions",
+    "summary": "Leer registros estructurados de reuniones y preparar briefings verificables de decisiones, compromisos y asuntos pendientes."
+  },
+  "triggers": {
+    "intents": ["meeting_record_read", "meeting_brief_prepare"],
+    "explicit_invocation": true
+  },
+  "dependencies": {
+    "runtime": ["kernel-record-store"],
+    "sources": ["meeting-source"],
+    "capabilities": []
+  },
+  "operations": [
+    {
+      "operation_id": "meeting.read",
+      "effect_class": "READ",
+      "semantics": {
+        "semantic_purpose": "Read one authorized meeting record and its evidence without executing commitments.",
+        "required_primary_entity_type": "MEETING",
+        "required_entity_reference": true,
+        "accepted_reference_roles": ["SUBJECT"],
+        "returned_entity_types": ["MEETING", "DECISION", "COMMITMENT"],
+        "related_entities": [
+          { "entity_type": "DECISION", "relationship": "recorded_decisions", "role": "RELATED_RESULT" },
+          { "entity_type": "COMMITMENT", "relationship": "recorded_commitments", "role": "RELATED_RESULT" }
+        ],
+        "expected_output_meaning": "A meeting record and evidence; commitments remain records, not execution instructions.",
+        "missing_entity_behavior": "NEEDS_CLARIFICATION"
+      },
+      "triggers": { "intents": ["meeting_record_read"] },
+      "input": {
+        "schema_id": "MeetingBriefInput@v1",
+        "required_context": ["workspace_id", "meeting_id"],
+        "missing_input_behavior": "NEEDS_CLARIFICATION"
+      },
+      "output": {
+        "schema_id": "MeetingRecord@v1",
+        "artifact_kind": null,
+        "result_references": ["meeting_id", "provenance_refs"]
+      },
+      "permission": "meeting.read",
+      "side_effects": {
+        "reads": ["meeting-source"],
+        "writes": [],
+        "write_scope": "none"
+      },
+      "execution": {
+        "entrypoint": "meeting:read",
+        "timeout_ms": 5000,
+        "failure_contract": ["PERMISSION_DENIED", "MEETING_NOT_FOUND", "SOURCE_STORE_CORRUPT", "SCHEMA_INVALID"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "meeting:read.verify",
+        "postconditions": ["meeting_id_matches", "workspace_matches", "source_version_matches", "source_record_matches"],
+        "evidence": ["meeting-source-records"],
+        "read_back": true
+      }
+    },
+    {
+      "operation_id": "meeting.brief.prepare",
+      "effect_class": "PREPARE",
+      "semantics": {
+        "semantic_purpose": "Prepare a verified briefing for one authorized meeting without executing commitments.",
+        "required_primary_entity_type": "MEETING",
+        "required_entity_reference": true,
+        "accepted_reference_roles": ["SUBJECT"],
+        "returned_entity_types": ["MEETING", "DECISION", "COMMITMENT"],
+        "related_entities": [
+          { "entity_type": "DECISION", "relationship": "briefed_decisions", "role": "RELATED_RESULT" },
+          { "entity_type": "COMMITMENT", "relationship": "briefed_commitments", "role": "RELATED_RESULT" }
+        ],
+        "expected_output_meaning": "A draft briefing artifact, never an operational execution of the meeting commitments.",
+        "missing_entity_behavior": "NEEDS_CLARIFICATION"
+      },
+      "triggers": { "intents": ["meeting_brief_prepare"] },
+      "input": {
+        "schema_id": "MeetingBriefInput@v1",
+        "required_context": ["workspace_id", "meeting_id"],
+        "missing_input_behavior": "NEEDS_CLARIFICATION"
+      },
+      "output": {
+        "schema_id": "MeetingBrief@v1",
+        "artifact_kind": "meeting-brief",
+        "result_references": ["artifact_id", "evidence_refs"]
+      },
+      "permission": "meeting.brief.prepare",
+      "side_effects": {
+        "reads": ["meeting-source"],
+        "writes": ["kernel-record-store:artifacts"],
+        "write_scope": "kernel_instance"
+      },
+      "execution": {
+        "entrypoint": "meeting:brief.prepare",
+        "timeout_ms": 5000,
+        "failure_contract": ["PERMISSION_DENIED", "MEETING_NOT_FOUND", "SOURCE_STORE_CORRUPT", "SCHEMA_INVALID", "VERIFICATION_MISMATCH"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "meeting:brief.verify",
+        "postconditions": ["meeting_id_matches", "workspace_matches", "source_version_matches", "evidence_refs_exist", "claims_supported", "artifact_integrity"],
+        "evidence": ["meeting-source-records", "independent-read-back"],
+        "read_back": true
+      }
+    }
+  ]
+}

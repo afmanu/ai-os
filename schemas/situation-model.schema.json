@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "SituationModel@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "workspace_id", "as_of", "project", "objective", "active_matters", "blockers", "commitments", "unknowns", "source_discrepancies", "factual_contradictions", "evidence_refs", "possible_next_actions", "claims"],
+  "properties": {
+    "schema": { "const": "SituationModel@v1" },
+    "workspace_id": { "type": "string" },
+    "as_of": { "type": "string" },
+    "project": { "type": "object" },
+    "objective": { "type": ["string", "null"] },
+    "active_matters": { "type": "array" },
+    "blockers": { "type": "array" },
+    "commitments": { "type": "array" },
+    "unknowns": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "source_discrepancies": { "type": "array" },
+    "factual_contradictions": { "type": "array" },
+    "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "possible_next_actions": { "type": "array" },
+    "claims": { "type": "array" }
+  }
+}

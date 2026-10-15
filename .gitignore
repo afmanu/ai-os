@@ -1,0 +1,14 @@
+node_modules/
+coverage/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+.ai-os/
+backups/
+*.tmp
+.env
+.env.*
+*.local.json
+onboarding*.json
+private-instance/

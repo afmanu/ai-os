@@ -1,0 +1,139 @@
+[
+  {
+    "schema": "CapabilityManifest@v2",
+    "manifest_version": 2,
+    "capability_id": "cap.situation",
+    "capability_version": "0.1.0",
+    "competence": { "domain": "operational-continuity", "summary": "Construir una situación recuperable desde registros y evidencia autorizados." },
+    "triggers": { "intents": ["query_project_status", "query_update_result"], "explicit_invocation": true },
+    "dependencies": { "runtime": ["kernel-record-store"], "sources": ["task-source"], "capabilities": [] },
+    "operations": [
+      {
+        "operation_id": "situation.read",
+        "effect_class": "READ",
+        "semantics": {
+          "semantic_purpose": "Read the current evidence-backed situation for one project.",
+          "required_primary_entity_type": "PROJECT",
+          "required_entity_reference": true,
+          "accepted_reference_roles": ["SUBJECT"],
+          "returned_entity_types": ["PROJECT", "TASK", "EVIDENCE"],
+          "related_entities": [
+            { "entity_type": "TASK", "relationship": "project_tasks", "role": "RELATED_RESULT" },
+            { "entity_type": "EVIDENCE", "relationship": "supports_situation", "role": "CONTEXT" }
+          ],
+          "expected_output_meaning": "The project is primary; tasks and evidence explain its current situation.",
+          "missing_entity_behavior": "NEEDS_CLARIFICATION"
+        },
+        "triggers": { "intents": ["query_project_status", "query_update_result"] },
+        "input": { "schema_id": "SituationReadInput@v1", "required_context": ["workspace_id"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+        "output": { "schema_id": "SituationModel@v1", "artifact_kind": null, "result_references": ["evidence_refs"] },
+        "permission": "source.read",
+        "side_effects": { "reads": ["kernel-record-store", "task-source"], "writes": [], "write_scope": "none" },
+        "execution": { "entrypoint": "legacy:situation.read", "timeout_ms": 5000, "failure_contract": ["PERMISSION_DENIED", "NOT_FOUND", "NEEDS_CLARIFICATION", "STORE_CORRUPT"], "idempotency": "not_applicable" },
+        "verification": { "entrypoint": "legacy:situation.verify", "postconditions": ["evidence_refs_present", "workspace_scope_matches"], "evidence": ["kernel-records", "source-read-back"], "read_back": true }
+      }
+    ]
+  },
+  {
+    "schema": "CapabilityManifest@v2",
+    "manifest_version": 2,
+    "capability_id": "cap.task-record",
+    "capability_version": "0.1.0",
+    "competence": { "domain": "task-management", "summary": "Consultar, preparar, ejecutar y verificar una actualización de tarea." },
+    "triggers": { "intents": ["query_task", "prepare_task_update", "execute_task_update", "verify_task_update"], "explicit_invocation": true },
+    "dependencies": { "runtime": ["kernel-record-store"], "sources": ["task-source"], "capabilities": [] },
+    "operations": [
+      {
+        "operation_id": "task.read",
+        "effect_class": "READ",
+        "semantics": {
+          "semantic_purpose": "Read one task from the authorized task source.",
+          "required_primary_entity_type": "TASK",
+          "required_entity_reference": true,
+          "accepted_reference_roles": ["SUBJECT"],
+          "returned_entity_types": ["TASK"],
+          "related_entities": [],
+          "expected_output_meaning": "The concrete task is the subject of the read result.",
+          "missing_entity_behavior": "NEEDS_CLARIFICATION"
+        },
+        "triggers": { "intents": ["query_task"] },
+        "input": { "schema_id": "TaskReadInput@v1", "required_context": ["workspace_id", "task_ref"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+        "output": { "schema_id": "TaskReadResult@v1", "artifact_kind": null, "result_references": ["task_ref"] },
+        "permission": "source.read",
+        "side_effects": { "reads": ["task-source"], "writes": [], "write_scope": "none" },
+        "execution": { "entrypoint": "legacy:task.read", "timeout_ms": 5000, "failure_contract": ["PERMISSION_DENIED", "NOT_FOUND", "STORE_CORRUPT"], "idempotency": "not_applicable" },
+        "verification": { "entrypoint": "legacy:task.read.verify", "postconditions": ["workspace_scope_matches"], "evidence": ["source-read-back"], "read_back": true }
+      },
+      {
+        "operation_id": "task.update.prepare",
+        "effect_class": "PREPARE",
+        "semantics": {
+          "semantic_purpose": "Prepare a frozen patch for one task without mutating the task source.",
+          "required_primary_entity_type": "TASK",
+          "required_entity_reference": true,
+          "accepted_reference_roles": ["SUBJECT"],
+          "returned_entity_types": ["TASK", "PLAN"],
+          "related_entities": [
+            { "entity_type": "PLAN", "relationship": "prepared_plan", "role": "RELATED_RESULT" }
+          ],
+          "expected_output_meaning": "A frozen plan for the selected task, not an applied task mutation.",
+          "missing_entity_behavior": "NEEDS_CLARIFICATION"
+        },
+        "triggers": { "intents": ["prepare_task_update"] },
+        "input": { "schema_id": "TaskUpdateDraftInput@v1", "required_context": ["workspace_id", "task_ref"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+        "output": { "schema_id": "FrozenPlan@v1", "artifact_kind": "frozen-plan", "result_references": ["plan_id", "plan_hash"] },
+        "permission": "plan.prepare",
+        "side_effects": { "reads": ["task-source"], "writes": ["kernel-record-store:plans"], "write_scope": "kernel_instance" },
+        "execution": { "entrypoint": "legacy:task.update.prepare", "timeout_ms": 5000, "failure_contract": ["PERMISSION_DENIED", "NOT_FOUND", "NEEDS_CLARIFICATION", "SCHEMA_INVALID"], "idempotency": "not_applicable" },
+        "verification": { "entrypoint": "legacy:task.update.prepare.verify", "postconditions": ["canonical_patch_hash", "canonical_plan_hash"], "evidence": ["frozen-plan"], "read_back": true }
+      },
+      {
+        "operation_id": "task.update.execute",
+        "effect_class": "OPERATIONAL_MUTATION",
+        "semantics": {
+          "semantic_purpose": "Execute an exactly approved frozen plan against one task under the existing grant boundary.",
+          "required_primary_entity_type": "TASK",
+          "required_entity_reference": true,
+          "accepted_reference_roles": ["SUBJECT"],
+          "returned_entity_types": ["TASK", "RESULT"],
+          "related_entities": [
+            { "entity_type": "RESULT", "relationship": "verified_execution_result", "role": "RELATED_RESULT" }
+          ],
+          "expected_output_meaning": "A verified mutation result for the selected task; interpretation never supplies the grant.",
+          "missing_entity_behavior": "REJECT"
+        },
+        "triggers": { "intents": ["execute_task_update"] },
+        "input": { "schema_id": "ApprovedPlanExecution@v1", "required_context": ["workspace_id", "plan_id", "grant_id"], "missing_input_behavior": "REJECT" },
+        "output": { "schema_id": "ExecutionResult@v1", "artifact_kind": null, "result_references": ["result_id", "receipt"] },
+        "permission": "task.mutate",
+        "side_effects": { "reads": ["kernel-record-store", "task-source"], "writes": ["task-source:task"], "write_scope": "declared_resource" },
+        "execution": { "entrypoint": "legacy:task.update.execute", "timeout_ms": 15000, "failure_contract": ["PERMISSION_DENIED", "GRANT_INVALID", "GRANT_EXPIRED", "VERSION_CONFLICT", "UNKNOWN_EFFECT", "VERIFICATION_MISMATCH"], "idempotency": "scoped_durable" },
+        "verification": { "entrypoint": "legacy:task.update.verify", "postconditions": ["approved_fields_equal", "untouched_fields_equal", "source_version_advanced_once"], "evidence": ["source-receipt", "source-read-back"], "read_back": true }
+      },
+      {
+        "operation_id": "task.update.verify",
+        "effect_class": "READ",
+        "semantics": {
+          "semantic_purpose": "Verify the observed result of one frozen plan by independent read-back.",
+          "required_primary_entity_type": "PLAN",
+          "required_entity_reference": true,
+          "accepted_reference_roles": ["SUBJECT"],
+          "returned_entity_types": ["PLAN", "TASK", "RESULT"],
+          "related_entities": [
+            { "entity_type": "TASK", "relationship": "plan_target", "role": "CONTEXT" },
+            { "entity_type": "RESULT", "relationship": "verification_result", "role": "RELATED_RESULT" }
+          ],
+          "expected_output_meaning": "A read-back verification result for the selected plan, never a retry authorization.",
+          "missing_entity_behavior": "REJECT"
+        },
+        "triggers": { "intents": ["verify_task_update"] },
+        "input": { "schema_id": "FrozenPlanRef@v1", "required_context": ["workspace_id", "plan_id"], "missing_input_behavior": "REJECT" },
+        "output": { "schema_id": "ExecutionResult@v1", "artifact_kind": null, "result_references": ["result_id", "receipt"] },
+        "permission": "source.read",
+        "side_effects": { "reads": ["kernel-record-store", "task-source"], "writes": ["kernel-record-store:results"], "write_scope": "kernel_instance" },
+        "execution": { "entrypoint": "legacy:task.update.verify", "timeout_ms": 10000, "failure_contract": ["PERMISSION_DENIED", "NOT_FOUND", "UNKNOWN_EFFECT", "VERIFICATION_MISMATCH"], "idempotency": "not_applicable" },
+        "verification": { "entrypoint": "legacy:task.update.verify", "postconditions": ["approved_fields_equal", "untouched_fields_equal", "source_version_advanced_once"], "evidence": ["source-receipt", "source-read-back"], "read_back": true }
+      }
+    ]
+  }
+]

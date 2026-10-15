@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContextSufficiency@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "request_id", "target", "decision", "met_requirement_ids", "blocking_requirement_ids", "non_blocking_gaps", "evidence_refs", "authorization", "allowed_next_action", "execution_permitted", "rationale_codes"],
+  "properties": {
+    "schema": { "const": "ContextSufficiency@v1" },
+    "request_id": { "type": "string", "minLength": 1 },
+    "target": { "enum": ["ANSWER", "PREPARE", "EXACT_APPROVAL_REQUEST", "EXECUTE_AUTHORIZED_ACTION"] },
+    "decision": { "enum": ["SUFFICIENT", "PARTIAL_WITH_LIMITS", "INSUFFICIENT", "ACCESS_DENIED", "UNSUPPORTED"] },
+    "met_requirement_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "blocking_requirement_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "non_blocking_gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement_id", "status", "limitation"],
+        "properties": {
+          "requirement_id": { "type": "string" },
+          "status": { "enum": ["STALE", "MISSING", "AMBIGUOUS", "CONFLICTING", "ACCESS_DENIED", "SOURCE_UNAVAILABLE", "UNSUPPORTED"] },
+          "limitation": { "type": "string" }
+        }
+      }
+    },
+    "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "present", "scope_matches", "grant_ref"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "present": { "type": "boolean" },
+        "scope_matches": { "type": "boolean" },
+        "grant_ref": { "type": ["string", "null"] }
+      }
+    },
+    "allowed_next_action": { "enum": ["RESPOND", "RESPOND_WITH_LIMITS", "ROUTE", "PREPARE", "REQUEST_CLARIFICATION", "REQUEST_CONTEXT", "REQUEST_EXACT_APPROVAL", "EXECUTE_AUTHORIZED", "DENY", "UNSUPPORTED"] },
+    "execution_permitted": { "type": "boolean" },
+    "rationale_codes": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  }
+}

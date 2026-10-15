@@ -1,0 +1,127 @@
+{
+  "schema": "CapabilityManifest@v2",
+  "manifest_version": 2,
+  "capability_id": "cap.content-os-read",
+  "capability_version": "0.1.0",
+  "competence": {
+    "domain": "external-content-records",
+    "summary": "Leer de forma acotada CONTENT, OUTPUT, procedencia y artifacts autorizados desde una instancia local compatible de Content OS."
+  },
+  "triggers": {
+    "intents": ["content_os_summary_read", "content_os_item_read", "content_os_output_read"],
+    "explicit_invocation": true
+  },
+  "dependencies": {
+    "runtime": ["kernel-record-store"],
+    "sources": ["content-os-filesystem"],
+    "capabilities": []
+  },
+  "source_contracts": [
+    {
+      "source_system": "content-os",
+      "core_version": "0.1.0-alpha.1",
+      "schema_id": "content-os.state.pieces@1",
+      "authority": "external"
+    }
+  ],
+  "operations": [
+    {
+      "operation_id": "content.summary.read",
+      "effect_class": "READ",
+      "semantics": {
+        "semantic_purpose": "Summarize the authorized Content OS workspace without selecting a specific CONTENT or OUTPUT.",
+        "required_primary_entity_type": null,
+        "required_entity_reference": false,
+        "accepted_reference_roles": ["SCOPE"],
+        "returned_entity_types": ["CONTENT", "OUTPUT"],
+        "related_entities": [],
+        "expected_output_meaning": "Workspace-scoped counts and indexes, not a concrete content or output record.",
+        "missing_entity_behavior": "ALLOW_WORKSPACE_SCOPE"
+      },
+      "triggers": { "intents": ["content_os_summary_read"] },
+      "input": { "schema_id": "ContentOsSummaryInput@v1", "required_context": ["workspace_id"], "missing_input_behavior": "REJECT" },
+      "output": { "schema_id": "ContentOsReadResult@v1", "artifact_kind": null, "result_references": ["source.snapshot_hash", "summary.content", "summary.outputs"] },
+      "permission": "content-os.read",
+      "side_effects": { "reads": ["content-os:state", "content-os:artifacts"], "writes": [], "write_scope": "none" },
+      "execution": {
+        "entrypoint": "content-os:summary.read",
+        "timeout_ms": 5000,
+        "failure_contract": ["NOT_CONFIGURED", "SOURCE_NOT_FOUND", "SOURCE_UNAVAILABLE", "UNSUPPORTED_SCHEMA", "INVALID_SOURCE_JSON", "ACCESS_DENIED", "SOURCE_CHANGED"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "content-os:summary.verify",
+        "postconditions": ["workspace_binding_matches", "schema_supported", "snapshot_matches", "relations_valid"],
+        "evidence": ["content-os-state-snapshot", "independent-read-back"],
+        "read_back": true
+      }
+    },
+    {
+      "operation_id": "content.item.read",
+      "effect_class": "READ",
+      "semantics": {
+        "semantic_purpose": "Read one CONTENT as the subject and return its evidence, artifacts and related outputs.",
+        "required_primary_entity_type": "CONTENT",
+        "required_entity_reference": true,
+        "accepted_reference_roles": ["SUBJECT"],
+        "returned_entity_types": ["CONTENT", "OUTPUT"],
+        "related_entities": [
+          { "entity_type": "OUTPUT", "relationship": "related_outputs", "role": "RELATED_RESULT" }
+        ],
+        "expected_output_meaning": "The selected CONTENT is primary; OUTPUT records are related results of that content.",
+        "missing_entity_behavior": "NEEDS_CLARIFICATION"
+      },
+      "triggers": { "intents": ["content_os_item_read"] },
+      "input": { "schema_id": "ContentOsItemInput@v1", "required_context": ["workspace_id", "content_id"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+      "output": { "schema_id": "ContentOsReadResult@v1", "artifact_kind": null, "result_references": ["source.snapshot_hash", "content.content_id", "content.evidence", "content.artifacts", "related_outputs"] },
+      "permission": "content-os.read",
+      "side_effects": { "reads": ["content-os:state", "content-os:artifacts"], "writes": [], "write_scope": "none" },
+      "execution": {
+        "entrypoint": "content-os:item.read",
+        "timeout_ms": 5000,
+        "failure_contract": ["NOT_CONFIGURED", "SOURCE_NOT_FOUND", "SOURCE_UNAVAILABLE", "UNSUPPORTED_SCHEMA", "INVALID_SOURCE_JSON", "ACCESS_DENIED", "CONTENT_NOT_FOUND", "INVALID_RELATIONSHIP", "PATH_TRAVERSAL", "UNSAFE_PATH", "FILE_NOT_ALLOWED", "SOURCE_CHANGED"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "content-os:item.verify",
+        "postconditions": ["workspace_binding_matches", "content_exists", "relations_valid", "snapshot_matches", "artifact_scope_valid"],
+        "evidence": ["content-os-state-snapshot", "authorized-artifact-read-back"],
+        "read_back": true
+      }
+    },
+    {
+      "operation_id": "content.output.read",
+      "effect_class": "READ",
+      "semantics": {
+        "semantic_purpose": "Read one concrete OUTPUT as the subject and return its owning CONTENT and provenance chain.",
+        "required_primary_entity_type": "OUTPUT",
+        "required_entity_reference": true,
+        "accepted_reference_roles": ["SUBJECT"],
+        "returned_entity_types": ["OUTPUT", "CONTENT"],
+        "related_entities": [
+          { "entity_type": "CONTENT", "relationship": "owning_content", "role": "CONTEXT" },
+          { "entity_type": "OUTPUT", "relationship": "provenance_chain", "role": "RELATED_RESULT" }
+        ],
+        "expected_output_meaning": "The selected OUTPUT is primary; content ownership and source outputs explain provenance.",
+        "missing_entity_behavior": "NEEDS_CLARIFICATION"
+      },
+      "triggers": { "intents": ["content_os_output_read"] },
+      "input": { "schema_id": "ContentOsOutputInput@v1", "required_context": ["workspace_id", "output_id"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+      "output": { "schema_id": "ContentOsReadResult@v1", "artifact_kind": null, "result_references": ["source.snapshot_hash", "output.output_id", "output.content_id", "output.source_output_id", "provenance_chain"] },
+      "permission": "content-os.read",
+      "side_effects": { "reads": ["content-os:state", "content-os:artifacts"], "writes": [], "write_scope": "none" },
+      "execution": {
+        "entrypoint": "content-os:output.read",
+        "timeout_ms": 5000,
+        "failure_contract": ["NOT_CONFIGURED", "SOURCE_NOT_FOUND", "SOURCE_UNAVAILABLE", "UNSUPPORTED_SCHEMA", "INVALID_SOURCE_JSON", "ACCESS_DENIED", "OUTPUT_NOT_FOUND", "INVALID_RELATIONSHIP", "PATH_TRAVERSAL", "UNSAFE_PATH", "FILE_NOT_ALLOWED", "SOURCE_CHANGED"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "content-os:output.verify",
+        "postconditions": ["workspace_binding_matches", "output_exists", "content_exists", "provenance_valid", "snapshot_matches", "artifact_scope_valid"],
+        "evidence": ["content-os-state-snapshot", "authorized-artifact-read-back", "independent-read-back"],
+        "read_back": true
+      }
+    }
+  ]
+}

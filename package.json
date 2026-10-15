@@ -1,0 +1,31 @@
+{
+  "name": "ai-os-core",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "description": "Persistent, extensible local AI operating system for Codex with explicit permissions and private user instances.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/afmanu/ai-os.git"
+  },
+  "bugs": {
+    "url": "https://github.com/afmanu/ai-os/issues"
+  },
+  "homepage": "https://github.com/afmanu/ai-os#readme",
+  "engines": {
+    "node": ">=24.11.0"
+  },
+  "bin": {
+    "ai-os": "./bin/ai-os.mjs"
+  },
+  "scripts": {
+    "cli": "node --no-warnings ./bin/ai-os.mjs",
+    "test": "npm run test:product",
+    "test:product": "node --no-warnings --test --test-concurrency=1 ./test/atlas.test.mjs ./test/capability-system.test.mjs ./test/codex-native.test.mjs ./test/content-os-read.test.mjs ./test/contracts.test.mjs ./test/generic-core.test.mjs ./test/meeting-brief.test.mjs",
+    "test:generic": "node --no-warnings --test --test-concurrency=1 ./test/generic-core.test.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0"
+  }
+}

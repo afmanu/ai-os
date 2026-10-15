@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContentOsOutputInput@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workspace_id", "output_id"],
+  "properties": {
+    "workspace_id": { "type": "string", "minLength": 1 },
+    "output_id": { "type": "string", "pattern": "^OUTPUT-[0-9]{3,}$" },
+    "include_artifact": { "type": "boolean" }
+  }
+}

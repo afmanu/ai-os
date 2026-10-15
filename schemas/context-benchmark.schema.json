@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContextBenchmark@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "benchmark_id", "version", "synthetic_only", "contexts", "cases"],
+  "properties": {
+    "schema": { "const": "ContextBenchmark@v1" },
+    "benchmark_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "const": 1 },
+    "synthetic_only": { "const": true },
+    "contexts": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/context" }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 36,
+      "items": { "$ref": "#/definitions/case" }
+    }
+  },
+  "definitions": {
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_type", "entity_ref"],
+      "properties": {
+        "entity_type": { "type": "string" },
+        "entity_ref": { "type": ["string", "null"] }
+      }
+    },
+    "operation": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["capability_id", "capability_version", "operation_id"],
+      "properties": {
+        "capability_id": { "type": "string" },
+        "capability_version": { "type": "string" },
+        "operation_id": { "type": "string" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_type", "workspace_id", "authority_ref", "read_permission", "access", "status", "observed_at", "valid_until", "fields", "evidence_refs", "payload_text"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "source_type": { "type": "string" },
+        "workspace_id": { "type": "string" },
+        "authority_ref": { "type": "string" },
+        "read_permission": { "type": "string" },
+        "access": { "enum": ["GRANTED", "DENIED"] },
+        "status": { "enum": ["AVAILABLE", "STALE", "MISSING", "AMBIGUOUS", "CONFLICTING", "SOURCE_UNAVAILABLE", "UNSUPPORTED"] },
+        "observed_at": { "type": "string", "minLength": 1 },
+        "valid_until": { "type": ["string", "null"] },
+        "fields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "payload_text": { "type": "string" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_id", "identity_authorized", "entities", "authorized_source_ids", "sources", "grant"],
+      "properties": {
+        "workspace_id": { "type": "string" },
+        "identity_authorized": { "type": "boolean" },
+        "entities": { "type": "array", "items": { "$ref": "#/definitions/entity" } },
+        "authorized_source_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "sources": { "type": "array", "items": { "$ref": "#/definitions/source" } },
+        "grant": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["grant_ref", "state", "scope_matches"],
+          "properties": {
+            "grant_ref": { "type": "string" },
+            "state": { "enum": ["VALID", "MISSING", "EXPIRED", "CONSUMED"] },
+            "scope_matches": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "candidateOutput": {
+      "type": "object"
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "split", "domain", "input", "context_ref", "target", "expected", "security_tags", "candidate_model_output"],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^CTX-[0-9]{3}$" },
+        "split": { "enum": ["DEVELOPMENT", "EVALUATION"] },
+        "domain": { "enum": ["ATLAS", "MEETING_BRIEF", "CONTENT_OS_READ", "CROSS_CUTTING"] },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "request_id", "actor_id", "workspace_id", "input_channel", "timestamp", "raw_request_ref"],
+          "properties": {
+            "text": { "type": "string", "minLength": 1 },
+            "request_id": { "type": "string" },
+            "actor_id": { "type": "string" },
+            "workspace_id": { "type": "string" },
+            "input_channel": { "type": "string" },
+            "timestamp": { "type": "string", "minLength": 1 },
+            "raw_request_ref": { "type": "string" }
+          }
+        },
+        "context_ref": { "type": "string" },
+        "target": { "enum": ["ANSWER", "PREPARE", "EXACT_APPROVAL_REQUEST", "EXECUTE_AUTHORIZED_ACTION"] },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["intent", "entities", "required_context", "eligible_operation", "disposition", "prohibited_actions", "evidence_refs", "acceptable_outcome"],
+          "properties": {
+            "intent": { "type": ["string", "null"] },
+            "entities": { "type": "array", "items": { "$ref": "#/definitions/entity" } },
+            "required_context": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+            "eligible_operation": { "$ref": "#/definitions/operation" },
+            "disposition": { "enum": ["READY_FOR_ROUTING", "NEEDS_CONTEXT", "NEEDS_CLARIFICATION", "ACCESS_DENIED", "UNSUPPORTED_REQUEST"] },
+            "prohibited_actions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+            "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+            "acceptable_outcome": { "enum": ["TASK_SUCCESS", "SAFE_FAILURE"] }
+          }
+        },
+        "security_tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "candidate_model_output": { "type": ["object", "null"] }
+      }
+    }
+  }
+}

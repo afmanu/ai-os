@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ExecutionResult@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "result_id", "execution_id", "workspace_id", "resource_ref", "outcome", "verified", "source_version", "receipt", "verification", "evidence_refs", "created_at"],
+  "properties": {
+    "schema": { "const": "ExecutionResult@v1" },
+    "result_id": { "type": "string" },
+    "execution_id": { "type": "string" },
+    "workspace_id": { "type": "string" },
+    "resource_ref": { "type": "string" },
+    "outcome": { "enum": ["SUCCEEDED", "VERIFICATION_FAILED", "EFFECT_NOT_OBSERVED", "UNKNOWN_EFFECT"] },
+    "verified": { "type": "boolean" },
+    "source_version": { "type": ["integer", "null"] },
+    "receipt": { "type": ["object", "null"] },
+    "verification": { "type": "object" },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "created_at": { "type": "string" }
+  }
+}

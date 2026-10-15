@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "NormalizedRequest@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "intent", "workspace_id", "entities", "claims", "missing_fields", "requested_effect"],
+  "properties": {
+    "schema": { "const": "NormalizedRequest@v1" },
+    "intent": { "enum": ["record_project_event", "query_project_status", "query_update_result", "prepare_task_update"] },
+    "workspace_id": { "type": "string", "minLength": 1 },
+    "entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project_ref": { "type": ["string", "null"] },
+        "project_name": { "type": ["string", "null"] },
+        "task_ref": { "type": ["string", "null"] }
+      },
+      "required": ["project_ref", "project_name", "task_ref"]
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject", "predicate", "value", "epistemic_status"],
+        "properties": {
+          "subject": { "type": ["string", "null"] },
+          "predicate": { "type": "string" },
+          "value": {},
+          "epistemic_status": { "enum": ["declared", "observed", "inferred", "unknown", "conflicting"] }
+        }
+      }
+    },
+    "missing_fields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "requested_effect": { "enum": ["INTERNAL_CAPTURE", "READ", "PREPARE"] }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "MeetingBrief@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "artifact_id", "meeting_id", "workspace_id", "source_version", "title", "held_at", "overview", "decisions", "commitments", "open_matters", "unknowns", "conflicts", "evidence_refs", "readable_markdown"],
+  "properties": {
+    "schema": { "const": "MeetingBrief@v1" },
+    "artifact_id": { "type": "string" },
+    "meeting_id": { "type": "string" },
+    "workspace_id": { "type": "string" },
+    "source_version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string" },
+    "held_at": { "type": "string" },
+    "overview": { "$ref": "#/definitions/item" },
+    "decisions": { "type": "array", "items": { "$ref": "#/definitions/item" } },
+    "commitments": { "type": "array", "items": { "$ref": "#/definitions/commitment" } },
+    "open_matters": { "type": "array", "items": { "$ref": "#/definitions/item" } },
+    "unknowns": { "type": "array", "items": { "$ref": "#/definitions/unknown" } },
+    "conflicts": { "type": "array", "items": { "$ref": "#/definitions/item" } },
+    "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "readable_markdown": { "type": "string", "minLength": 1 }
+  },
+  "definitions": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "text", "epistemic_status", "evidence_refs"],
+      "properties": {
+        "ref": { "type": "string" },
+        "text": { "type": "string" },
+        "epistemic_status": { "enum": ["SOURCE_FACT", "INTERPRETATION", "UNKNOWN", "CONFLICTING"] },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+      }
+    },
+    "commitment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "text", "owner_ref", "due_at", "epistemic_status", "evidence_refs"],
+      "properties": {
+        "ref": { "type": "string" },
+        "text": { "type": "string" },
+        "owner_ref": { "type": ["string", "null"] },
+        "due_at": { "type": ["string", "null"] },
+        "epistemic_status": { "const": "SOURCE_FACT" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+      }
+    },
+    "unknown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "field", "reason", "epistemic_status", "evidence_refs"],
+      "properties": {
+        "ref": { "type": "string" },
+        "field": { "type": "string" },
+        "reason": { "type": "string" },
+        "epistemic_status": { "const": "UNKNOWN" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+      }
+    }
+  }
+}

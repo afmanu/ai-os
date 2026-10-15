@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContentOsSummaryInput@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workspace_id"],
+  "properties": {
+    "workspace_id": { "type": "string", "minLength": 1 }
+  }
+}

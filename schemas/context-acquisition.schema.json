@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ContextAcquisition@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "request_id", "workspace_id", "results", "scope_expanded", "instructions_followed_from_sources"],
+  "properties": {
+    "schema": { "const": "ContextAcquisition@v1" },
+    "request_id": { "type": "string", "minLength": 1 },
+    "workspace_id": { "type": "string", "minLength": 1 },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement_id", "status", "source_id", "source_type", "authority_ref", "read_permission", "observed_at", "freshness", "evidence_refs", "limitation"],
+        "properties": {
+          "requirement_id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["AVAILABLE", "STALE", "MISSING", "AMBIGUOUS", "CONFLICTING", "ACCESS_DENIED", "SOURCE_UNAVAILABLE", "UNSUPPORTED"] },
+          "source_id": { "type": ["string", "null"] },
+          "source_type": { "type": ["string", "null"] },
+          "authority_ref": { "type": ["string", "null"] },
+          "read_permission": { "type": "string" },
+          "observed_at": { "type": ["string", "null"] },
+          "freshness": { "enum": ["FRESH", "STALE", "UNKNOWN", "NOT_APPLICABLE"] },
+          "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "limitation": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "scope_expanded": { "const": false },
+    "instructions_followed_from_sources": { "const": false }
+  }
+}

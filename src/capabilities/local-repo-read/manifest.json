@@ -1,0 +1,122 @@
+{
+  "schema": "CapabilityManifest@v2",
+  "manifest_version": 2,
+  "capability_id": "cap.local-repo-read",
+  "capability_version": "0.1.0",
+  "competence": {
+    "domain": "local-repository-evidence",
+    "summary": "Leer documentos autorizados y metadatos Git de repositorios locales vinculados explícitamente, sin escribir ni descubrir otras rutas."
+  },
+  "triggers": {
+    "intents": ["local_repository_document_read", "local_repository_decisions_read", "local_repository_git_read"],
+    "explicit_invocation": true
+  },
+  "dependencies": {
+    "runtime": ["kernel-record-store"],
+    "sources": ["local-git-filesystem"],
+    "capabilities": []
+  },
+  "source_contracts": [
+    {
+      "source_system": "local-git-repository",
+      "core_version": "git",
+      "schema_id": "authorized-local-repository@1",
+      "authority": "external"
+    }
+  ],
+  "operations": [
+    {
+      "operation_id": "repository.document.read",
+      "effect_class": "READ",
+      "semantics": {
+        "semantic_purpose": "Read one explicitly allow-listed document from one configured local Git repository.",
+        "required_primary_entity_type": "DOCUMENT",
+        "required_entity_reference": true,
+        "accepted_reference_roles": ["SUBJECT"],
+        "returned_entity_types": ["DOCUMENT", "EVIDENCE"],
+        "related_entities": [{ "entity_type": "EVIDENCE", "relationship": "source_snapshot", "role": "CONTEXT" }],
+        "expected_output_meaning": "A bounded source snapshot with provenance, not a model summary.",
+        "missing_entity_behavior": "NEEDS_CLARIFICATION"
+      },
+      "triggers": { "intents": ["local_repository_document_read"] },
+      "input": { "schema_id": "LocalRepositoryDocumentInput@v1", "required_context": ["workspace_id", "repository_id", "path"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+      "output": { "schema_id": "LocalRepositoryReadResult@v1", "artifact_kind": null, "result_references": ["source.snapshot_hash", "source.locator"] },
+      "permission": "local-repository.read",
+      "side_effects": { "reads": ["local-repository:document"], "writes": [], "write_scope": "none" },
+      "execution": {
+        "entrypoint": "local-repo:document.read",
+        "timeout_ms": 5000,
+        "failure_contract": ["NOT_CONFIGURED", "ACCESS_DENIED", "REPOSITORY_NOT_FOUND", "PATH_TRAVERSAL", "FILE_NOT_ALLOWED", "SOURCE_CHANGED"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "local-repo:document.verify",
+        "postconditions": ["workspace_binding_matches", "snapshot_matches", "independent_read_back"],
+        "evidence": ["local-file-snapshot", "independent-read-back"],
+        "read_back": true
+      }
+    },
+    {
+      "operation_id": "repository.decisions.read",
+      "effect_class": "READ",
+      "semantics": {
+        "semantic_purpose": "Read decision sections from one explicitly allow-listed source document without treating extracted text as a new authority.",
+        "required_primary_entity_type": "DOCUMENT",
+        "required_entity_reference": true,
+        "accepted_reference_roles": ["SUBJECT"],
+        "returned_entity_types": ["DOCUMENT", "DECISION", "EVIDENCE"],
+        "related_entities": [{ "entity_type": "DECISION", "relationship": "declared_sections", "role": "RELATED_RESULT" }],
+        "expected_output_meaning": "Source text and section references from the authorized decision document.",
+        "missing_entity_behavior": "NEEDS_CLARIFICATION"
+      },
+      "triggers": { "intents": ["local_repository_decisions_read"] },
+      "input": { "schema_id": "LocalRepositoryDocumentInput@v1", "required_context": ["workspace_id", "repository_id", "path"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+      "output": { "schema_id": "LocalRepositoryReadResult@v1", "artifact_kind": null, "result_references": ["source.snapshot_hash", "payload.sections"] },
+      "permission": "local-repository.read",
+      "side_effects": { "reads": ["local-repository:document"], "writes": [], "write_scope": "none" },
+      "execution": {
+        "entrypoint": "local-repo:decisions.read",
+        "timeout_ms": 5000,
+        "failure_contract": ["NOT_CONFIGURED", "ACCESS_DENIED", "REPOSITORY_NOT_FOUND", "PATH_TRAVERSAL", "FILE_NOT_ALLOWED", "SOURCE_CHANGED"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "local-repo:decisions.verify",
+        "postconditions": ["workspace_binding_matches", "snapshot_matches", "independent_read_back"],
+        "evidence": ["local-file-snapshot", "independent-read-back"],
+        "read_back": true
+      }
+    },
+    {
+      "operation_id": "repository.git.read",
+      "effect_class": "READ",
+      "semantics": {
+        "semantic_purpose": "Read HEAD, branch, worktree status and bounded commit history from one explicitly configured Git root.",
+        "required_primary_entity_type": "REPOSITORY",
+        "required_entity_reference": true,
+        "accepted_reference_roles": ["SUBJECT"],
+        "returned_entity_types": ["REPOSITORY", "GIT_COMMIT", "EVIDENCE"],
+        "related_entities": [{ "entity_type": "GIT_COMMIT", "relationship": "recent_history", "role": "RELATED_RESULT" }],
+        "expected_output_meaning": "A point-in-time read-only Git snapshot with hashes and dates.",
+        "missing_entity_behavior": "NEEDS_CLARIFICATION"
+      },
+      "triggers": { "intents": ["local_repository_git_read"] },
+      "input": { "schema_id": "LocalRepositoryGitInput@v1", "required_context": ["workspace_id", "repository_id"], "missing_input_behavior": "NEEDS_CLARIFICATION" },
+      "output": { "schema_id": "LocalRepositoryReadResult@v1", "artifact_kind": null, "result_references": ["source.snapshot_hash", "payload.head", "payload.commits"] },
+      "permission": "local-repository.read",
+      "side_effects": { "reads": ["local-repository:git-metadata"], "writes": [], "write_scope": "none" },
+      "execution": {
+        "entrypoint": "local-repo:git.read",
+        "timeout_ms": 5000,
+        "failure_contract": ["NOT_CONFIGURED", "ACCESS_DENIED", "REPOSITORY_NOT_FOUND", "GIT_READ_FAILED", "SOURCE_CHANGED"],
+        "idempotency": "scoped_durable"
+      },
+      "verification": {
+        "entrypoint": "local-repo:git.verify",
+        "postconditions": ["workspace_binding_matches", "snapshot_matches", "independent_read_back"],
+        "evidence": ["git-status", "git-history", "independent-read-back"],
+        "read_back": true
+      }
+    }
+  ]
+}
