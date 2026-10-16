@@ -11,7 +11,11 @@ const deferredCleanup = new Set();
 
 process.once("beforeExit", () => {
   for (const root of deferredCleanup) {
-    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    try {
+      rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
+    } catch (error) {
+      if (error.code !== "EPERM" && error.code !== "EBUSY") throw error;
+    }
   }
 });
 

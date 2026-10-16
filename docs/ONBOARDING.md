@@ -69,6 +69,8 @@ Sin `--approve`, con un hash distinto o sin preview, la instancia no se crea. La
 
 La instancia inicial usa `mode: PERSONAL`, `seed: NONE`, runtime `CODEX`, cero proyectos, cero tareas y conexiones externas desactivadas.
 
+Las conexiones externas no se preconfiguran durante ONBOARD. Después de crear la instancia pueden proponerse con `connection add`, congelarse con `connection preview` y activarse únicamente con la aprobación del hash exacto. Esto no modifica el borrador aprobado ni exige crear otra instancia.
+
 ## 5. Captura confirmada
 
 Después de crear la instancia puedes registrar únicamente hechos explícitamente confirmados:

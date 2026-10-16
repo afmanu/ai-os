@@ -20,7 +20,7 @@ import {
 function parseArgs(argv) {
   const [command, ...tail] = argv;
   const rest = [...tail];
-  const subcommand = ["capability", "runtime", "onboard", "capture", "records"].includes(command) && rest[0] && !rest[0].startsWith("--") ? rest.shift() : null;
+  const subcommand = ["capability", "runtime", "onboard", "capture", "records", "connection"].includes(command) && rest[0] && !rest[0].startsWith("--") ? rest.shift() : null;
   const options = {};
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -81,6 +81,13 @@ function usage() {
       "capability enable|disable --instance <path> --id <cap.id> --version <semver>",
       "capability invoke --instance <path> --id <cap.id> --version <semver> --operation <operation.id> --input <json>",
       "capability result --instance <path> --result-id <id>",
+      "connection add --instance <path> --config <json> [--connection-id <id>] [--source-id <id>]",
+      "connection preview --instance <path> --connection-id <id>",
+      "connection approve --instance <path> --connection-id <id> --preview-hash <sha256:...> --approve",
+      "connection list --instance <path>",
+      "connection authorize-read --instance <path> --connection-id <id> --resource-ref <ref>",
+      "connection verify-read --instance <path> --evidence <json>",
+      "connection revoke --instance <path> --connection-id <id> --revoke",
       "runtime context --instance <path> --request-id <id> --request-ref <ref> [--request-text <text>] [--target ANSWER] [--channel codex] [--context-packet <synthetic-json>]",
       "runtime assess --instance <path> --request-id <id> --request-ref <ref> --target <target> --response <json> [--request-text <text>] [--context-packet <synthetic-json>]",
       "runtime decisions --instance <path> [--subject-ref <ref>]",
@@ -226,6 +233,35 @@ export async function runCli(argv, { registry = defaultRegistry } = {}) {
     else if (command === "result") print(kernel.outcome({ ...common(options, kernel), resultId: options.result_id || ATLAS.resultId }));
     else if (command === "metrics") print(kernel.metrics(common(options, kernel)));
     else if (command === "validate") print(validateInstance({ store: kernel.store, taskSource: kernel.taskSource, registry: kernel.registry, instanceRoot: kernel.paths.root }));
+    else if (command === "connection") {
+      const scope = common(options, kernel);
+      if (subcommand === "add") {
+        if (!options.config) throw new AiOsError("CLI_USAGE", "connection add requires --config <json>");
+        print(kernel.addExternalConnection({
+          ...scope,
+          config: parseJsonInput(options.config, "--config"),
+          connectionId: options.connection_id || null,
+          sourceId: options.source_id || null,
+        }));
+      } else if (subcommand === "preview") {
+        if (!options.connection_id) throw new AiOsError("CLI_USAGE", "connection preview requires --connection-id");
+        print(kernel.previewExternalConnection({ ...scope, connectionId: options.connection_id }));
+      } else if (subcommand === "approve") {
+        if (!options.connection_id || !options.preview_hash) throw new AiOsError("CLI_USAGE", "connection approve requires --connection-id and --preview-hash");
+        print(kernel.approveExternalConnection({ ...scope, connectionId: options.connection_id, previewHash: options.preview_hash, approved: options.approve === true }));
+      } else if (subcommand === "list") {
+        print(kernel.externalConnections(scope));
+      } else if (subcommand === "authorize-read") {
+        if (!options.connection_id || !options.resource_ref) throw new AiOsError("CLI_USAGE", "connection authorize-read requires --connection-id and --resource-ref");
+        print(kernel.authorizeExternalConnectionRead({ ...scope, connectionId: options.connection_id, resourceRef: options.resource_ref }));
+      } else if (subcommand === "verify-read") {
+        if (!options.evidence) throw new AiOsError("CLI_USAGE", "connection verify-read requires --evidence <json>");
+        print(kernel.verifyExternalConnectionRead({ ...scope, evidence: parseJsonInput(options.evidence, "--evidence") }));
+      } else if (subcommand === "revoke") {
+        if (!options.connection_id) throw new AiOsError("CLI_USAGE", "connection revoke requires --connection-id");
+        print(kernel.revokeExternalConnection({ ...scope, connectionId: options.connection_id, revoked: options.revoke === true }));
+      } else throw new AiOsError("CLI_USAGE", "Unknown connection command", { subcommand });
+    }
     else if (command === "capability") {
       const scope = common(options, kernel);
       if (subcommand === "list") print(kernel.capabilities(scope));

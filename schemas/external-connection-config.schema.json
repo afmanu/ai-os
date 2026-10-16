@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ExternalConnectionConfig@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "provider_id", "provider_version", "runtime", "resources", "access_mode", "retention"],
+  "properties": {
+    "schema": { "const": "ExternalConnectionConfig@v1" },
+    "provider_id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "provider_version": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "connector_ref"],
+      "properties": {
+        "kind": { "enum": ["HOST_CONNECTOR", "MCP"] },
+        "connector_ref": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["resource_ref", "resource_type", "permission"],
+        "properties": {
+          "resource_ref": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "resource_type": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "permission": { "const": "READ" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 160 }
+        }
+      }
+    },
+    "access_mode": { "const": "READ_ONLY" },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "raw_content"],
+      "properties": {
+        "mode": { "const": "MINIMAL_REFERENCES" },
+        "raw_content": { "const": "DENY" }
+      }
+    }
+  }
+}

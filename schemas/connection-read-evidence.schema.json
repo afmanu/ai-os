@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ConnectionReadEvidence@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "connection_id", "provider_id", "provider_version", "resource_ref", "locator", "observed_at", "content_hash"],
+  "properties": {
+    "schema": { "const": "ConnectionReadEvidence@v1" },
+    "connection_id": { "type": "string", "pattern": "^CONN-[A-Za-z0-9-]+$" },
+    "provider_id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "provider_version": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "resource_ref": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "locator": { "type": "string", "minLength": 1, "maxLength": 1024 },
+    "observed_at": { "type": "string", "minLength": 1 },
+    "content_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}

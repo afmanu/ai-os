@@ -10,6 +10,7 @@ No es un agente autónomo ni un sandbox de seguridad. Codex aporta interpretaci�
 - Un onboarding `PERSONAL` resumible: borrador, respuestas, preview con hash y aprobación explícita.
 - Persistencia SQLite local para records confirmados, evidencia, resultados y estado operativo.
 - Capabilities versionadas y explícitas. Las fuentes externas empiezan desactivadas.
+- Conexiones externas post-onboarding con preview, aprobación exacta, recursos allow-listed y revocación.
 - Un adapter read-only para documentos allow-listed y metadatos de repositorios Git seleccionados por el usuario.
 - Un Company Holographic Blueprint 3D local y read-only, centrado en el workspace autorizado y su conocimiento empresarial.
 - Un runtime Codex-native que produce candidatos; nunca concede permisos ni ejecuta por sí mismo.
@@ -75,6 +76,25 @@ npm run dashboard -- --instance $instance
 
 La URL predeterminada es `http://127.0.0.1:4640`. El workspace es el núcleo real y conecta proyectos, fuentes y capabilities mediante relaciones verificadas. El dashboard despliega proyectos como ensamblajes 3D deterministas con tarjetas, planos de profundidad, conexiones direccionales, búsqueda, filtros, foco por ensamblaje, panel contextual, scan pausable, modo inmersivo y connection trace. No persiste otro grafo ni permite mutaciones. Consulta [Dashboard](docs/DASHBOARD.md).
 
+## Conexiones externas
+
+Una instancia ya creada puede autorizar después una aplicación externa sin repetir el onboarding. La conexión es genérica: AI OS conserva el proveedor, el conector del runtime, la allow-list exacta, la policy y metadatos mínimos de procedencia. OAuth, tokens, sesiones y respuestas completas permanecen fuera del store.
+
+Ejemplo completamente ficticio:
+
+```powershell
+$config = '{"provider_id":"fictional-knowledge","provider_version":"2026-10","runtime":{"kind":"HOST_CONNECTOR","connector_ref":"fictional-knowledge"},"resources":[{"resource_ref":"resource:fictional-company","resource_type":"KNOWLEDGE_BASE","permission":"READ","label":"Fictional Company"}],"access_mode":"READ_ONLY","retention":{"mode":"MINIMAL_REFERENCES","raw_content":"DENY"}}'
+
+npm run cli -- connection add --instance $instance --connection-id CONN-FICTIONAL-01 --source-id SRC-FICTIONAL-EXTERNAL-01 --config $config
+npm run cli -- connection preview --instance $instance --connection-id CONN-FICTIONAL-01
+npm run cli -- connection approve --instance $instance --connection-id CONN-FICTIONAL-01 --preview-hash 'sha256:<preview-hash>' --approve
+npm run cli -- connection authorize-read --instance $instance --connection-id CONN-FICTIONAL-01 --resource-ref 'resource:fictional-company'
+```
+
+Tras la lectura realizada por el conector del host, `connection verify-read` acepta únicamente `connection_id`, proveedor, recurso, locator, timestamp y hash del contenido. No acepta el contenido bruto. `connection revoke --revoke` bloquea lecturas posteriores y conserva la trazabilidad mínima ya registrada.
+
+`ACTIVE` significa que el alcance está autorizado; no garantiza que la cuenta externa siga conectada o que el proveedor esté disponible. AI OS no limita el acceso general que Codex, Claude o un servidor MCP puedan conservar fuera del kernel.
+
 ## Core e Instance
 
 `PRODUCT CORE` contiene código, contratos, documentación y fixtures sintéticos. No contiene datos de usuario.
@@ -137,6 +157,7 @@ La suite pública incluye kernel, contratos, capabilities, runtime Codex-native,
 - Estado local sin cifrado gestionado ni secret manager.
 - Backup/restore no coordina todavía todos los stores opcionales.
 - Sin scheduler, agentes adicionales, memoria vectorial ni publicación automática. El dashboard local es exclusivamente read-only.
+- Las conexiones externas dependen de un conector disponible en el runtime. El Core valida autorización y procedencia declarada, pero no gestiona OAuth ni prueba por sí solo la autenticidad del proveedor.
 - El adapter Git aplica read-only por contrato y verificación; no es aislamiento del proceso a nivel de sistema operativo.
 - La calidad semántica del modelo depende del contexto y no se presenta como garantía de seguridad.
 

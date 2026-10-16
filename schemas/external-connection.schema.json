@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ExternalConnection@v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "connection_id", "source_id", "workspace_id", "actor_id", "policy_id", "policy_version", "state", "config", "config_hash", "preview_hash", "proposed_at", "approved_at", "revoked_at", "updated_at"],
+  "properties": {
+    "schema": { "const": "ExternalConnection@v1" },
+    "connection_id": { "type": "string", "pattern": "^CONN-[A-Za-z0-9-]+$" },
+    "source_id": { "type": "string", "pattern": "^SRC-[A-Za-z0-9-]+$" },
+    "workspace_id": { "type": "string", "minLength": 1 },
+    "actor_id": { "type": "string", "minLength": 1 },
+    "policy_id": { "type": "string", "minLength": 1 },
+    "policy_version": { "type": "integer", "minimum": 1 },
+    "state": { "enum": ["DRAFT", "PREVIEWED", "APPROVED", "ACTIVE", "REVOKED", "ERROR"] },
+    "config": { "$ref": "ExternalConnectionConfig@v1" },
+    "config_hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "preview_hash": { "type": ["string", "null"], "pattern": "^sha256:[a-f0-9]{64}$" },
+    "proposed_at": { "type": "string", "minLength": 1 },
+    "approved_at": { "type": ["string", "null"] },
+    "revoked_at": { "type": ["string", "null"] },
+    "updated_at": { "type": "string", "minLength": 1 }
+  }
+}

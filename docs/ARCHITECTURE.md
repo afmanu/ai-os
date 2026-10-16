@@ -43,6 +43,22 @@ La política de datos controla `INTERNAL_CAPTURE`. La política de acciones cont
 
 Los bindings de fuentes están ligados al workspace. Una idempotency key y un resultado no se comparten entre actores o workspaces.
 
+## Conexiones externas
+
+Una conexión externa es una autorización de fuente, no una capability dinámica ni un grant de mutación. Se crea después del onboarding mediante:
+
+`DRAFT → PREVIEWED(hash) → APPROVED → ACTIVE → REVOKED`
+
+El registro queda ligado al actor, workspace, source ID, proveedor y versión, conector del runtime, recursos exactos y versión de action policy. El paso `APPROVED → ACTIVE` activa el alcance autorizado en una única transacción; `ACTIVE` no certifica conectividad del proveedor.
+
+Antes de invocar el conector, el runtime solicita un preflight read-only al kernel para un `resource_ref` exacto. Después puede registrar únicamente metadatos de procedencia: locator, timestamp y content hash. El payload externo no se guarda automáticamente y una lectura no se convierte en captura. Incorporar una afirmación al Situation Model sigue requiriendo un record estructurado confirmado bajo la data policy.
+
+El conector y sus credenciales pertenecen al host, no a AI OS:
+
+`kernel scope → host connector/MCP → external provider → metadata-only verification`
+
+La allow-list determina qué acepta AI OS como contexto autorizado. No restringe técnicamente otros accesos que el runtime anfitrión pueda tener fuera del kernel.
+
 ## Recuperación
 
 Un grant es exacto, caduca y se consume una vez. Si el proceso se interrumpe tras el efecto, la recuperación puede efectuar una nueva verificación read-only. No puede ejecutar otra mutación sin un nuevo plan y autorización.

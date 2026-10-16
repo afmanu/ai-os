@@ -14,4 +14,6 @@ No llames una API de modelos, solicites API keys, inicies procesos Codex anidado
 
 Durante tests usa solo identidades y repositorios ficticios temporales. En uso local, vincula únicamente las fuentes que el usuario seleccione expresamente y respeta su allow-list read-only; nunca descubras repositorios, amplíes rutas ni conviertas una lectura en captura. No configures Content OS por defecto ni hagas remotes, push, release o publicación sin autorización separada.
 
+Las conexiones externas se añaden después del onboarding mediante `connection add → preview → approve`. Antes de usar un conector del host, ejecuta `connection authorize-read` para el recurso exacto y valida después únicamente sus metadatos con `connection verify-read`. El estado `ACTIVE` significa que el alcance está autorizado, no que el proveedor sea alcanzable. No guardes tokens, sesiones, respuestas completas del proveedor ni amplíes el recurso aprobado. La revocación bloquea nuevas lecturas, pero conserva la trazabilidad mínima de las anteriores.
+
 El dashboard es una proyección read-only. Inícialo mediante la CLI existente y una instancia ya creada; no añadas endpoints mutadores, no expongas el servidor fuera de loopback, no leas SQLite desde el navegador y no conviertas una relación visual en autoridad nueva.

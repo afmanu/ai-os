@@ -3,6 +3,7 @@ import { defaultRegistry } from "./registry.mjs";
 import { executionTransitions } from "./store.mjs";
 import { verifyFrozenPlanIntegrity } from "./approval.mjs";
 import { canonicalJson, sha256 } from "./utils.mjs";
+import { buildConnectionPreview, connectionTransitions } from "./connections.mjs";
 
 function check(id, ok, details = {}) {
   return { id, status: ok ? "PASS" : "FAIL", details };
@@ -87,6 +88,44 @@ export function validateInstance({ store, taskSource, registry = defaultRegistry
     return failures.length ? [{ workspace_id: row.workspace_id, capability_ref: row.capability_ref, failures }] : [];
   });
   checks.push(check("source-binding-integrity", sourceBindingFailures.length === 0, { failures: sourceBindingFailures }));
+
+  const connectionFailures = [];
+  for (const row of store.tableRows("external_connections")) {
+    const connection = store.getExternalConnection(row.connection_id, row.workspace_id);
+    const failures = [];
+    const schemaResult = checkSchema("connection", connection);
+    if (!schemaResult.ok) failures.push({ kind: "schema", errors: schemaResult.errors });
+    if (sha256(canonicalJson(connection.config)) !== connection.config_hash) failures.push({ kind: "config_hash_mismatch" });
+    if ([connection.proposed_at, connection.updated_at, connection.approved_at, connection.revoked_at].filter(Boolean).some((value) => Number.isNaN(Date.parse(value)))) {
+      failures.push({ kind: "invalid_timestamp" });
+    }
+    const expectedPreview = buildConnectionPreview(connection).preview_hash;
+    if (connection.state !== "DRAFT" && connection.preview_hash !== expectedPreview) failures.push({ kind: "preview_hash_mismatch" });
+    const identity = store.db.prepare("SELECT 1 FROM actor_workspaces WHERE actor_id=? AND workspace_id=?").get(connection.actor_id, connection.workspace_id);
+    if (!identity) failures.push({ kind: "identity_scope_missing" });
+    const policy = store.db.prepare("SELECT 1 FROM policies WHERE workspace_id=? AND policy_id=? AND policy_version=? AND policy_kind='action'")
+      .get(connection.workspace_id, connection.policy_id, connection.policy_version);
+    if (!policy) failures.push({ kind: "action_policy_missing" });
+    if (["ACTIVE", "REVOKED"].includes(connection.state)) {
+      const source = store.getSource(connection.workspace_id, connection.source_id);
+      if (!source || source.kind !== "external_connector" || source.classification !== "private") failures.push({ kind: "approved_source_missing" });
+    }
+    if (failures.length) connectionFailures.push({ connection_id: connection.connection_id, failures });
+  }
+  for (const transition of store.tableRows("external_connection_transitions")) {
+    if (transition.from_state === null && transition.to_state === "DRAFT") continue;
+    if (!connectionTransitions.get(transition.from_state)?.has(transition.to_state)) {
+      connectionFailures.push({ connection_id: transition.connection_id, failures: [{ kind: "invalid_transition", transition }] });
+    }
+  }
+  for (const read of store.tableRows("external_connection_reads")) {
+    const connection = store.getExternalConnection(read.connection_id, read.workspace_id);
+    const resource = connection?.config.resources.find((candidate) => candidate.resource_ref === read.resource_ref && candidate.permission === "READ");
+    if (!connection || connection.actor_id !== read.actor_id || !resource || !/^sha256:[a-f0-9]{64}$/.test(read.content_hash)) {
+      connectionFailures.push({ connection_id: read.connection_id, failures: [{ kind: "invalid_read_metadata", read_id: read.read_id }] });
+    }
+  }
+  checks.push(check("external-connection-integrity", connectionFailures.length === 0, { failures: connectionFailures }));
 
   const planFailures = [];
   for (const row of store.tableRows("plans")) {

@@ -42,6 +42,9 @@ export class TaskSource {
       this.db = new DatabaseSync(path);
       this.db.exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000; PRAGMA synchronous = FULL; PRAGMA journal_mode = DELETE;");
     } catch (error) {
+      try {
+        this.db?.close();
+      } catch {}
       throw new AiOsError("SOURCE_STORE_CORRUPT", "Task source could not be opened", { path, cause: error.message });
     }
   }

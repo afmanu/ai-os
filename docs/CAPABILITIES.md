@@ -26,6 +26,12 @@ La lectura y el read-back del verifier pueden observar cambios concurrentes; en 
 
 Content OS no es obligatorio ni se descubre. El módulo permanece desactivado hasta recibir un binding explícito. AI OS no incluye ni modifica un repositorio Content OS externo.
 
+## Conectores del runtime
+
+Las aplicaciones externas post-onboarding no se cargan como plugins remotos. El Core registra una autorización read-only por actor, workspace y recursos exactos; Codex, Claude o MCP proporcionan el conector del host. `connection authorize-read` decide elegibilidad antes de la llamada y `connection verify-read` valida después metadatos de procedencia sin persistir el payload.
+
+Este contrato no añade un router, agente o runtime de modelos. Tampoco concede operaciones de escritura. Un proveedor concreto solo se convierte en fuente autorizada después de preview y aprobación explícita en la instancia privada.
+
 ## Extensión
 
 Los manifests y schemas incluidos documentan el contrato actual. Añadir módulos sigue siendo trabajo de código confiable: esta distribución no proporciona marketplace, firma, sandbox o carga remota de paquetes.

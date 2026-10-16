@@ -84,6 +84,27 @@ function resultFromRow(row) {
   return parseJson(row.result_json);
 }
 
+function connectionFromRow(row) {
+  if (!row) return null;
+  return {
+    schema: "ExternalConnection@v1",
+    connection_id: row.connection_id,
+    source_id: row.source_id,
+    workspace_id: row.workspace_id,
+    actor_id: row.actor_id,
+    policy_id: row.policy_id,
+    policy_version: row.policy_version,
+    state: row.state,
+    config: parseJson(row.config_json),
+    config_hash: row.config_hash,
+    preview_hash: row.preview_hash,
+    proposed_at: row.proposed_at,
+    approved_at: row.approved_at,
+    revoked_at: row.revoked_at,
+    updated_at: row.updated_at,
+  };
+}
+
 function migrateExecutionsV2(db) {
   const columns = db.prepare("PRAGMA table_info(executions)").all();
   const planId = columns.find((column) => column.name === "plan_id");
@@ -200,6 +221,11 @@ export class KernelStore {
     this.path = path;
     this.clock = clock;
     this.db = openDatabase(path);
+    const initialized = this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='instance_meta'").get();
+    if (initialized) {
+      const meta = this.db.prepare("SELECT instance_id FROM instance_meta WHERE singleton=1").get();
+      if (meta) this.initialize(meta.instance_id);
+    }
   }
 
   close() {
@@ -277,6 +303,41 @@ export class KernelStore {
         updated_at TEXT NOT NULL,
         PRIMARY KEY (workspace_id, capability_ref),
         FOREIGN KEY (workspace_id, source_id) REFERENCES sources(workspace_id, source_id)
+      );
+      CREATE TABLE IF NOT EXISTS external_connections (
+        connection_id TEXT PRIMARY KEY,
+        source_id TEXT NOT NULL,
+        workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+        actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+        policy_id TEXT NOT NULL,
+        policy_version INTEGER NOT NULL,
+        state TEXT NOT NULL,
+        config_json TEXT NOT NULL,
+        config_hash TEXT NOT NULL,
+        preview_hash TEXT,
+        proposed_at TEXT NOT NULL,
+        approved_at TEXT,
+        revoked_at TEXT,
+        updated_at TEXT NOT NULL,
+        UNIQUE (workspace_id, source_id)
+      );
+      CREATE TABLE IF NOT EXISTS external_connection_transitions (
+        transition_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        connection_id TEXT NOT NULL REFERENCES external_connections(connection_id),
+        from_state TEXT,
+        to_state TEXT NOT NULL,
+        occurred_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS external_connection_reads (
+        read_id TEXT PRIMARY KEY,
+        connection_id TEXT NOT NULL REFERENCES external_connections(connection_id),
+        workspace_id TEXT NOT NULL REFERENCES workspaces(workspace_id),
+        actor_id TEXT NOT NULL REFERENCES actors(actor_id),
+        resource_ref TEXT NOT NULL,
+        locator TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        observed_at TEXT NOT NULL,
+        verified_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS policies (
         policy_id TEXT NOT NULL,
@@ -475,8 +536,8 @@ export class KernelStore {
     `);
     migrateExecutionsV2(this.db);
     const now = iso(this.clock);
-    this.db.prepare("INSERT OR IGNORE INTO instance_meta(singleton, instance_id, schema_version, created_at) VALUES(1, ?, 4, ?)").run(instanceId, now);
-    this.db.prepare("UPDATE instance_meta SET schema_version=4 WHERE singleton=1 AND schema_version<4").run();
+    this.db.prepare("INSERT OR IGNORE INTO instance_meta(singleton, instance_id, schema_version, created_at) VALUES(1, ?, 5, ?)").run(instanceId, now);
+    this.db.prepare("UPDATE instance_meta SET schema_version=5 WHERE singleton=1 AND schema_version<5").run();
     const meta = this.db.prepare("SELECT instance_id FROM instance_meta WHERE singleton=1").get();
     invariant(meta.instance_id === instanceId, "INSTANCE_MISMATCH", "Kernel store belongs to a different instance");
   }
@@ -677,6 +738,103 @@ export class KernelStore {
     return this.db.prepare("SELECT * FROM source_bindings WHERE workspace_id=? ORDER BY capability_ref")
       .all(workspaceId)
       .map((row) => ({ ...rowObject(row), config: parseJson(row.config_json) }));
+  }
+
+  createExternalConnection(connection) {
+    return this.transaction(() => {
+      invariant(!this.getExternalConnection(connection.connection_id, connection.workspace_id), "CONNECTION_EXISTS", "Connection identifier already exists", { connection_id: connection.connection_id });
+      this.db.prepare(`INSERT INTO external_connections(
+        connection_id, source_id, workspace_id, actor_id, policy_id, policy_version, state,
+        config_json, config_hash, preview_hash, proposed_at, approved_at, revoked_at, updated_at
+      ) VALUES(?, ?, ?, ?, ?, ?, 'DRAFT', ?, ?, NULL, ?, NULL, NULL, ?)`)
+        .run(
+          connection.connection_id,
+          connection.source_id,
+          connection.workspace_id,
+          connection.actor_id,
+          connection.policy_id,
+          connection.policy_version,
+          canonicalJson(connection.config),
+          connection.config_hash,
+          connection.proposed_at,
+          connection.updated_at,
+        );
+      this.db.prepare("INSERT INTO external_connection_transitions(connection_id, from_state, to_state, occurred_at) VALUES(?, NULL, 'DRAFT', ?)")
+        .run(connection.connection_id, connection.proposed_at);
+      return this.getExternalConnection(connection.connection_id, connection.workspace_id);
+    });
+  }
+
+  getExternalConnection(connectionId, workspaceId) {
+    return connectionFromRow(this.db.prepare("SELECT * FROM external_connections WHERE connection_id=? AND workspace_id=?").get(connectionId, workspaceId));
+  }
+
+  listExternalConnections(workspaceId, actorId) {
+    return this.db.prepare("SELECT * FROM external_connections WHERE workspace_id=? AND actor_id=? ORDER BY proposed_at, connection_id")
+      .all(workspaceId, actorId)
+      .map(connectionFromRow);
+  }
+
+  previewExternalConnection(connectionId, workspaceId, previewHash, at) {
+    return this.transaction(() => {
+      const current = this.getExternalConnection(connectionId, workspaceId);
+      invariant(current, "CONNECTION_NOT_FOUND", "External connection does not exist in this workspace", { connection_id: connectionId });
+      if (current.state === "PREVIEWED") {
+        invariant(current.preview_hash === previewHash, "CONNECTION_PREVIEW_CHANGED", "Stored connection preview does not match the current configuration");
+        return current;
+      }
+      invariant(current.state === "DRAFT", "CONNECTION_STATE_INVALID", "Only a draft connection can be previewed", { state: current.state });
+      this.db.prepare("UPDATE external_connections SET state='PREVIEWED', preview_hash=?, updated_at=? WHERE connection_id=? AND workspace_id=?")
+        .run(previewHash, at, connectionId, workspaceId);
+      this.db.prepare("INSERT INTO external_connection_transitions(connection_id, from_state, to_state, occurred_at) VALUES(?, 'DRAFT', 'PREVIEWED', ?)")
+        .run(connectionId, at);
+      return this.getExternalConnection(connectionId, workspaceId);
+    });
+  }
+
+  activateExternalConnection(connectionId, workspaceId, approvedAt) {
+    return this.transaction(() => {
+      const current = this.getExternalConnection(connectionId, workspaceId);
+      invariant(current?.state === "PREVIEWED", "CONNECTION_STATE_INVALID", "Only a previewed connection can be approved", { connection_id: connectionId, state: current?.state || null });
+      this.db.prepare("UPDATE external_connections SET state='APPROVED', approved_at=?, updated_at=? WHERE connection_id=? AND workspace_id=?")
+        .run(approvedAt, approvedAt, connectionId, workspaceId);
+      this.db.prepare("INSERT INTO external_connection_transitions(connection_id, from_state, to_state, occurred_at) VALUES(?, 'PREVIEWED', 'APPROVED', ?)")
+        .run(connectionId, approvedAt);
+      this.registerSource({
+        workspaceId,
+        sourceId: current.source_id,
+        kind: "external_connector",
+        authorityScope: current.config.resources.map((resource) => resource.resource_ref),
+        classification: "private",
+      });
+      this.db.prepare("UPDATE external_connections SET state='ACTIVE', updated_at=? WHERE connection_id=? AND workspace_id=?")
+        .run(approvedAt, connectionId, workspaceId);
+      this.db.prepare("INSERT INTO external_connection_transitions(connection_id, from_state, to_state, occurred_at) VALUES(?, 'APPROVED', 'ACTIVE', ?)")
+        .run(connectionId, approvedAt);
+      return this.getExternalConnection(connectionId, workspaceId);
+    });
+  }
+
+  revokeExternalConnection(connectionId, workspaceId, revokedAt) {
+    return this.transaction(() => {
+      const current = this.getExternalConnection(connectionId, workspaceId);
+      invariant(current, "CONNECTION_NOT_FOUND", "External connection does not exist in this workspace", { connection_id: connectionId });
+      if (current.state === "REVOKED") return { connection: current, duplicate: true };
+      invariant(current.state === "ACTIVE" || current.state === "ERROR", "CONNECTION_STATE_INVALID", "Only an active or failed connection can be revoked", { state: current.state });
+      this.db.prepare("UPDATE external_connections SET state='REVOKED', revoked_at=?, updated_at=? WHERE connection_id=? AND workspace_id=?")
+        .run(revokedAt, revokedAt, connectionId, workspaceId);
+      this.db.prepare("INSERT INTO external_connection_transitions(connection_id, from_state, to_state, occurred_at) VALUES(?, ?, 'REVOKED', ?)")
+        .run(connectionId, current.state, revokedAt);
+      return { connection: this.getExternalConnection(connectionId, workspaceId), duplicate: false };
+    });
+  }
+
+  recordExternalConnectionRead(read) {
+    this.db.prepare(`INSERT OR IGNORE INTO external_connection_reads(
+      read_id, connection_id, workspace_id, actor_id, resource_ref, locator, content_hash, observed_at, verified_at
+    ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(read.read_id, read.connection_id, read.workspace_id, read.actor_id, read.resource_ref, read.locator, read.content_hash, read.observed_at, read.verified_at);
+    return rowObject(this.db.prepare("SELECT * FROM external_connection_reads WHERE read_id=? AND workspace_id=?").get(read.read_id, read.workspace_id));
   }
 
   getProject(workspaceId, projectId) {
@@ -972,7 +1130,7 @@ export class KernelStore {
   }
 
   tableRows(table) {
-    const allowed = new Set(["instance_profiles", "actors", "workspaces", "sources", "source_bindings", "events", "evidence", "decisions", "plans", "grants", "executions", "execution_transitions", "results", "task_refs", "phase_metrics", "capability_activations", "artifacts"]);
+    const allowed = new Set(["instance_profiles", "actors", "workspaces", "sources", "source_bindings", "external_connections", "external_connection_transitions", "external_connection_reads", "events", "evidence", "decisions", "plans", "grants", "executions", "execution_transitions", "results", "task_refs", "phase_metrics", "capability_activations", "artifacts"]);
     invariant(allowed.has(table), "INVALID_TABLE", "Table is not inspectable");
     return this.db.prepare(`SELECT * FROM ${table}`).all().map(rowObject);
   }

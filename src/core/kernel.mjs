@@ -2,15 +2,22 @@ import { ensureInstanceRoot } from "../instance/paths.mjs";
 import { TaskSource } from "../adapters/task-source.mjs";
 import { ATLAS, atlasStatement } from "../fixtures/atlas.mjs";
 import { approvePlan, planDiff, prepareAtlasPlan, rejectPlan } from "./approval.mjs";
+import {
+  assertConnectionReadScope,
+  buildConnectionPreview,
+  normalizeConnectionConfig,
+  validateConnectionEvidence,
+} from "./connections.mjs";
 import { retrieveAtlasContext } from "./context.mjs";
 import { executeApprovedPlan, invokeRegisteredCapability, recoverAll, recoverExecution } from "./execution.mjs";
 import { AiOsError, invariant } from "./errors.mjs";
 import { normalizeRequest } from "./normalizer.mjs";
 import { authorizeCapture, authorizeConfirmedCapture, authorizeOperation } from "./policy.mjs";
 import { defaultRegistry } from "./registry.mjs";
+import { validateSchema } from "./schema-validator.mjs";
 import { buildSituation } from "./situation.mjs";
 import { KernelStore } from "./store.mjs";
-import { canonicalJson, iso, measure, sha256, systemClock } from "./utils.mjs";
+import { canonicalJson, iso, measure, opaqueId, sha256, systemClock } from "./utils.mjs";
 import { authorizedDashboardReadModel } from "../dashboard/read-model.mjs";
 import { buildDashboardProjection } from "../dashboard/projection.mjs";
 
@@ -45,7 +52,12 @@ export class AiOsKernel {
     this.clock = clock;
     this.registry = registry;
     this.store = new KernelStore(this.paths.kernelDb, { clock });
-    this.taskSource = new TaskSource(this.paths.taskDb, { clock });
+    try {
+      this.taskSource = new TaskSource(this.paths.taskDb, { clock });
+    } catch (error) {
+      this.store.close();
+      throw error;
+    }
   }
 
   close() {
@@ -458,6 +470,139 @@ export class AiOsKernel {
   metrics({ principalId = null, workspaceId = null } = {}) {
     const identity = this.identity(principalId, workspaceId);
     return { workspace_id: identity.workspace_id, phases: this.store.metrics(identity.workspace_id), model_calls: 0 };
+  }
+
+  addExternalConnection({ config, connectionId = null, sourceId = null, principalId = null, workspaceId = null }) {
+    const identity = this.identity(principalId, workspaceId);
+    const profile = this.store.instanceProfile();
+    invariant(profile?.mode === "PERSONAL" && profile.config?.external_connections === "DISABLED_BY_DEFAULT", "CONNECTIONS_UNAVAILABLE", "External connections require a PERSONAL instance with explicit opt-in");
+    const normalized = normalizeConnectionConfig(config);
+    const policy = this.policies(identity.workspace_id).action;
+    const now = iso(this.clock);
+    const connection = validateSchema("connection", {
+      schema: "ExternalConnection@v1",
+      connection_id: connectionId || opaqueId("CONN"),
+      source_id: sourceId || opaqueId("SRC"),
+      workspace_id: identity.workspace_id,
+      actor_id: identity.actor_id,
+      policy_id: policy.policy_id,
+      policy_version: policy.version,
+      state: "DRAFT",
+      config: normalized,
+      config_hash: sha256(canonicalJson(normalized)),
+      preview_hash: null,
+      proposed_at: now,
+      approved_at: null,
+      revoked_at: null,
+      updated_at: now,
+    });
+    return this.store.createExternalConnection(connection);
+  }
+
+  previewExternalConnection({ connectionId, principalId = null, workspaceId = null }) {
+    const identity = this.identity(principalId, workspaceId);
+    const connection = this.store.getExternalConnection(connectionId, identity.workspace_id);
+    invariant(connection?.actor_id === identity.actor_id, "CONNECTION_NOT_FOUND", "External connection does not exist for this actor and workspace", { connection_id: connectionId });
+    const policy = this.policies(identity.workspace_id).action;
+    invariant(connection.policy_id === policy.policy_id && connection.policy_version === policy.version, "CONNECTION_POLICY_STALE", "Connection must be recreated after an action policy change");
+    const preview = buildConnectionPreview(connection);
+    this.store.previewExternalConnection(connectionId, identity.workspace_id, preview.preview_hash, iso(this.clock));
+    return preview;
+  }
+
+  approveExternalConnection({ connectionId, previewHash, approved, principalId = null, workspaceId = null }) {
+    invariant(approved === true, "EXPLICIT_APPROVAL_REQUIRED", "External connection activation requires explicit approval");
+    const identity = this.identity(principalId, workspaceId);
+    const connection = this.store.getExternalConnection(connectionId, identity.workspace_id);
+    invariant(connection?.actor_id === identity.actor_id, "CONNECTION_NOT_FOUND", "External connection does not exist for this actor and workspace", { connection_id: connectionId });
+    const policy = this.policies(identity.workspace_id).action;
+    invariant(connection.policy_id === policy.policy_id && connection.policy_version === policy.version, "CONNECTION_POLICY_STALE", "Connection must be recreated after an action policy change");
+    const expected = buildConnectionPreview(connection).preview_hash;
+    invariant(connection.preview_hash === expected && previewHash === expected, "APPROVAL_MISMATCH", "Approval must bind to the exact connection preview hash");
+    if (connection.state === "ACTIVE") return { connection, duplicate_request: true };
+    invariant(connection.state === "PREVIEWED", "PREVIEW_REQUIRED", "Preview the exact connection configuration before approval");
+    return { connection: this.store.activateExternalConnection(connectionId, identity.workspace_id, iso(this.clock)), duplicate_request: false };
+  }
+
+  externalConnections({ principalId = null, workspaceId = null } = {}) {
+    const identity = this.identity(principalId, workspaceId);
+    return {
+      identity: { actor_id: identity.actor_id, workspace_id: identity.workspace_id },
+      connections: this.store.listExternalConnections(identity.workspace_id, identity.actor_id),
+      credentials_stored_by_ai_os: false,
+      raw_content_stored_by_ai_os: false,
+    };
+  }
+
+  authorizeExternalConnectionRead({ connectionId, resourceRef, principalId = null, workspaceId = null }) {
+    const identity = this.identity(principalId, workspaceId);
+    const connection = this.store.getExternalConnection(connectionId, identity.workspace_id);
+    invariant(connection?.actor_id === identity.actor_id, "CONNECTION_NOT_FOUND", "External connection does not exist for this actor and workspace", { connection_id: connectionId });
+    const policy = this.policies(identity.workspace_id).action;
+    invariant(connection.policy_id === policy.policy_id && connection.policy_version === policy.version, "CONNECTION_POLICY_STALE", "Connection approval no longer matches the active action policy");
+    const resource = assertConnectionReadScope(connection, resourceRef);
+    return {
+      schema: "ConnectionReadAuthorization@v1",
+      decision: "ALLOW_READ",
+      connection_id: connection.connection_id,
+      source_id: connection.source_id,
+      actor_id: identity.actor_id,
+      workspace_id: identity.workspace_id,
+      provider_id: connection.config.provider_id,
+      provider_version: connection.config.provider_version,
+      runtime: connection.config.runtime,
+      resource,
+      policy_id: connection.policy_id,
+      policy_version: connection.policy_version,
+      authorized_at: iso(this.clock),
+      operational_mutation_allowed: false,
+      raw_content_storage_allowed: false,
+    };
+  }
+
+  verifyExternalConnectionRead({ evidence, principalId = null, workspaceId = null }) {
+    const identity = this.identity(principalId, workspaceId);
+    const connection = this.store.getExternalConnection(evidence?.connection_id, identity.workspace_id);
+    invariant(connection?.actor_id === identity.actor_id, "CONNECTION_NOT_FOUND", "External connection does not exist for this actor and workspace", { connection_id: evidence?.connection_id || null });
+    this.authorizeExternalConnectionRead({ connectionId: connection.connection_id, resourceRef: evidence?.resource_ref, principalId: identity.principal_id, workspaceId: identity.workspace_id });
+    const { value } = validateConnectionEvidence(connection, evidence);
+    invariant(!Number.isNaN(Date.parse(value.observed_at)), "CONNECTION_EVIDENCE_INVALID", "Evidence observed_at must be an ISO timestamp");
+    const verifiedAt = iso(this.clock);
+    const readId = `READ-${sha256(canonicalJson(value)).slice(7, 31).toUpperCase()}`;
+    const read = this.store.recordExternalConnectionRead({
+      read_id: readId,
+      connection_id: connection.connection_id,
+      workspace_id: identity.workspace_id,
+      actor_id: identity.actor_id,
+      resource_ref: value.resource_ref,
+      locator: value.locator,
+      content_hash: value.content_hash,
+      observed_at: value.observed_at,
+      verified_at: verifiedAt,
+    });
+    return {
+      schema: "VerifiedConnectionRead@v1",
+      verified_scope: true,
+      read_id: read.read_id,
+      connection_id: connection.connection_id,
+      source_id: connection.source_id,
+      provider_id: value.provider_id,
+      provider_version: value.provider_version,
+      resource_ref: value.resource_ref,
+      locator: value.locator,
+      observed_at: value.observed_at,
+      content_hash: value.content_hash,
+      retained: "METADATA_ONLY",
+      raw_content_stored: false,
+    };
+  }
+
+  revokeExternalConnection({ connectionId, revoked, principalId = null, workspaceId = null }) {
+    invariant(revoked === true, "EXPLICIT_REVOCATION_REQUIRED", "Revoking an external connection requires an explicit flag");
+    const identity = this.identity(principalId, workspaceId);
+    const connection = this.store.getExternalConnection(connectionId, identity.workspace_id);
+    invariant(connection?.actor_id === identity.actor_id, "CONNECTION_NOT_FOUND", "External connection does not exist for this actor and workspace", { connection_id: connectionId });
+    return this.store.revokeExternalConnection(connectionId, identity.workspace_id, iso(this.clock));
   }
 
   capabilities({ principalId = null, workspaceId = null } = {}) {

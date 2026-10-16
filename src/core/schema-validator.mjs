@@ -11,6 +11,9 @@ const schemaFiles = {
   grant: "grant.schema.json",
   executionResult: "execution-result.schema.json",
   capabilityResult: "capability-result.schema.json",
+  connectionConfig: "external-connection-config.schema.json",
+  connection: "external-connection.schema.json",
+  connectionReadEvidence: "connection-read-evidence.schema.json",
 };
 
 const schemasDirectory = fileURLToPath(new URL("../../schemas/", import.meta.url));

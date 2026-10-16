@@ -183,9 +183,68 @@ test("instalación PERSONAL limpia, onboarding aprobado y fuente Git read-only s
   const deniedWorkspace = command(["records", "list", "--instance", instanceRoot, "--principal", created.principal_id, "--workspace", "WS-FOREIGN-FICTIONAL"], 1);
   assert.equal(deniedWorkspace.error.error.code, "PERMISSION_DENIED");
 
+  const connectionConfig = {
+    schema: "ExternalConnectionConfig@v1",
+    provider_id: "fictional-knowledge",
+    provider_version: "2026-10",
+    runtime: { kind: "HOST_CONNECTOR", connector_ref: "fictional-knowledge" },
+    resources: [{ resource_ref: "resource:fictional-company", resource_type: "KNOWLEDGE_BASE", permission: "READ", label: "Fictional Company" }],
+    access_mode: "READ_ONLY",
+    retention: { mode: "MINIMAL_REFERENCES", raw_content: "DENY" },
+  };
+  const credentialDenied = command(["connection", "add", ...scope, "--config", JSON.stringify({ ...connectionConfig, credential: "fictional-secret" })], 1);
+  assert.equal(credentialDenied.error.error.code, "SCHEMA_INVALID");
+  const addedConnection = command(["connection", "add", ...scope, "--connection-id", "CONN-FICTIONAL-01", "--source-id", "SRC-FICTIONAL-EXTERNAL-01", "--config", JSON.stringify(connectionConfig)]).output;
+  assert.equal(addedConnection.state, "DRAFT");
+  const connectionPreview = command(["connection", "preview", ...scope, "--connection-id", addedConnection.connection_id]).output;
+  assert.equal(connectionPreview.access_mode, "READ_ONLY");
+  assert.equal(connectionPreview.credentials_stored_by_ai_os, false);
+  const deniedConnectionApproval = command(["connection", "approve", ...scope, "--connection-id", addedConnection.connection_id, "--preview-hash", connectionPreview.preview_hash], 1);
+  assert.equal(deniedConnectionApproval.error.error.code, "EXPLICIT_APPROVAL_REQUIRED");
+  const mismatchedConnectionApproval = command(["connection", "approve", ...scope, "--connection-id", addedConnection.connection_id, "--preview-hash", `sha256:${"0".repeat(64)}`, "--approve"], 1);
+  assert.equal(mismatchedConnectionApproval.error.error.code, "APPROVAL_MISMATCH");
+  const approvedConnection = command(["connection", "approve", ...scope, "--connection-id", addedConnection.connection_id, "--preview-hash", connectionPreview.preview_hash, "--approve"]).output;
+  assert.equal(approvedConnection.connection.state, "ACTIVE");
+  assert.equal(approvedConnection.duplicate_request, false);
+  const duplicateConnectionApproval = command(["connection", "approve", ...scope, "--connection-id", addedConnection.connection_id, "--preview-hash", connectionPreview.preview_hash, "--approve"]).output;
+  assert.equal(duplicateConnectionApproval.duplicate_request, true);
+  const listedConnections = command(["connection", "list", ...scope]).output;
+  assert.equal(listedConnections.connections.length, 1);
+  assert.equal(listedConnections.raw_content_stored_by_ai_os, false);
+  const isolatedConnections = command(["connection", "list", "--instance", instanceRoot, "--principal", created.principal_id, "--workspace", "WS-FOREIGN-FICTIONAL"], 1);
+  assert.equal(isolatedConnections.error.error.code, "PERMISSION_DENIED");
+  const readAuthorization = command(["connection", "authorize-read", ...scope, "--connection-id", addedConnection.connection_id, "--resource-ref", "resource:fictional-company"]).output;
+  assert.equal(readAuthorization.decision, "ALLOW_READ");
+  assert.equal(readAuthorization.operational_mutation_allowed, false);
+  const deniedResource = command(["connection", "authorize-read", ...scope, "--connection-id", addedConnection.connection_id, "--resource-ref", "resource:not-approved"], 1);
+  assert.equal(deniedResource.error.error.code, "RESOURCE_NOT_AUTHORIZED");
+  const readEvidence = {
+    schema: "ConnectionReadEvidence@v1",
+    connection_id: addedConnection.connection_id,
+    provider_id: "fictional-knowledge",
+    provider_version: "2026-10",
+    resource_ref: "resource:fictional-company",
+    locator: "fictional://company/overview",
+    observed_at: "2026-10-16T08:00:00.000Z",
+    content_hash: `sha256:${"a".repeat(64)}`,
+  };
+  const verifiedRead = command(["connection", "verify-read", ...scope, "--evidence", JSON.stringify(readEvidence)]).output;
+  assert.equal(verifiedRead.verified_scope, true);
+  assert.equal(verifiedRead.retained, "METADATA_ONLY");
+  const mismatchedProvider = command(["connection", "verify-read", ...scope, "--evidence", JSON.stringify({ ...readEvidence, provider_id: "other-fictional-provider" })], 1);
+  assert.equal(mismatchedProvider.error.error.code, "CONNECTION_EVIDENCE_INVALID");
+  const rawPayloadDenied = command(["connection", "verify-read", ...scope, "--evidence", JSON.stringify({ ...readEvidence, raw_content: "not allowed" })], 1);
+  assert.equal(rawPayloadDenied.error.error.code, "SCHEMA_INVALID");
+  const deniedRevocation = command(["connection", "revoke", ...scope, "--connection-id", addedConnection.connection_id], 1);
+  assert.equal(deniedRevocation.error.error.code, "EXPLICIT_REVOCATION_REQUIRED");
+  const revokedConnection = command(["connection", "revoke", ...scope, "--connection-id", addedConnection.connection_id, "--revoke"]).output;
+  assert.equal(revokedConnection.connection.state, "REVOKED");
+  const deniedAfterRevocation = command(["connection", "authorize-read", ...scope, "--connection-id", addedConnection.connection_id, "--resource-ref", "resource:fictional-company"], 1);
+  assert.equal(deniedAfterRevocation.error.error.code, "CONNECTION_NOT_ACTIVE");
+
   const validation = command(["validate", ...scope]).output;
   assert.equal(validation.status, "PASS", JSON.stringify(validation, null, 2));
-  assert.equal(validation.checks.length, 18);
+  assert.equal(validation.checks.length, 19);
   assert.ok(validation.checks.every((item) => item.status === "PASS"));
   const after = { files: files(repositoryRoot), head: git(repositoryRoot, ["rev-parse", "HEAD"]), status: git(repositoryRoot, ["status", "--porcelain=v1"]) };
   assert.deepEqual(after, before);
