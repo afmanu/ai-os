@@ -6,6 +6,13 @@ import { backupInstance, restoreInstance } from "./core/backup.mjs";
 import { validateInstance } from "./core/validator.mjs";
 import { defaultRegistry } from "./core/registry.mjs";
 import { defaultInstanceRoot } from "./instance/paths.mjs";
+import {
+  activeInstanceSelectionPath,
+  activeInstanceStatus,
+  diagnoseInstance,
+  resolveActiveInstance,
+  selectActiveInstance,
+} from "./instance/state.mjs";
 import { ATLAS, atlasStatement } from "./fixtures/atlas.mjs";
 import { CodexNativeRuntime } from "./runtime/codex-native.mjs";
 import { createDashboardServer } from "./dashboard/server.mjs";
@@ -20,7 +27,7 @@ import {
 function parseArgs(argv) {
   const [command, ...tail] = argv;
   const rest = [...tail];
-  const subcommand = ["capability", "runtime", "onboard", "capture", "records", "connection"].includes(command) && rest[0] && !rest[0].startsWith("--") ? rest.shift() : null;
+  const subcommand = ["capability", "runtime", "onboard", "capture", "records", "connection", "instance"].includes(command) && rest[0] && !rest[0].startsWith("--") ? rest.shift() : null;
   const options = {};
   for (let index = 0; index < rest.length; index += 1) {
     const token = rest[index];
@@ -56,7 +63,11 @@ function usage() {
       "onboard answer --state <private-path> --answers <json>",
       "onboard preview --state <private-path>",
       "onboard approve --state <private-path> --preview-hash <sha256:...> --approve",
+      "onboard approve --state <private-path> --preview-hash <sha256:...> --approve --select",
       "onboard status --state <private-path>",
+      "instance diagnose --instance <path>",
+      "instance select --instance <path>",
+      "instance current",
       "capture --instance <path> [--text <spanish statement>]",
       "capture confirmed --instance <path> --record <json>",
       "records list --instance <path> [--project-ref <id>] [--types PROJECT,DECISION]",
@@ -93,7 +104,59 @@ function usage() {
       "runtime decisions --instance <path> [--subject-ref <ref>]",
     ],
     default_instance: defaultInstanceRoot(),
+    suggested_personal_instance: defaultInstanceRoot(),
+    active_instance_selection: activeInstanceSelectionPath(),
+    first_use: "Complete onboard start, answer, preview and approve, then run instance select or approve with --select",
   };
+}
+
+const OPERATIONAL_COMMANDS = new Set([
+  "capture", "records", "dashboard", "status", "prepare", "plan", "approve", "reject", "execute",
+  "recover", "result", "metrics", "validate", "capability", "runtime", "connection",
+]);
+
+function requireText(options, name, message) {
+  if (typeof options[name] !== "string" || !options[name]) throw new AiOsError("CLI_USAGE", message);
+}
+
+function validateOperationalInvocation(command, subcommand, options) {
+  if (!OPERATIONAL_COMMANDS.has(command)) throw new AiOsError("CLI_USAGE", `Unknown command ${command}`, { command });
+  if (command === "capture") {
+    if (subcommand !== null && subcommand !== "confirmed") throw new AiOsError("CLI_USAGE", "Unknown capture command", { subcommand });
+    if (subcommand === "confirmed") requireText(options, "record", "capture confirmed requires --record <json>");
+  }
+  if (command === "records" && subcommand !== "list") throw new AiOsError("CLI_USAGE", "Unknown records command", { subcommand });
+  if (command === "approve") requireText(options, "plan_hash", "approve requires --plan-hash <exact hash>");
+  if (command === "connection") {
+    if (!["add", "preview", "approve", "list", "authorize-read", "verify-read", "revoke"].includes(subcommand)) throw new AiOsError("CLI_USAGE", "Unknown connection command", { subcommand });
+    if (subcommand === "add") requireText(options, "config", "connection add requires --config <json>");
+    if (["preview", "approve", "authorize-read", "revoke"].includes(subcommand)) requireText(options, "connection_id", `connection ${subcommand} requires --connection-id`);
+    if (subcommand === "approve") requireText(options, "preview_hash", "connection approve requires --preview-hash");
+    if (subcommand === "authorize-read") requireText(options, "resource_ref", "connection authorize-read requires --resource-ref");
+    if (subcommand === "verify-read") requireText(options, "evidence", "connection verify-read requires --evidence <json>");
+  }
+  if (command === "capability") {
+    if (!["list", "inspect", "configure", "enable", "disable", "route", "invoke", "result", "evidence"].includes(subcommand)) throw new AiOsError("CLI_USAGE", "Unknown capability command", { subcommand });
+    if (["inspect", "configure", "enable", "disable", "invoke"].includes(subcommand)) {
+      requireText(options, "id", `capability ${subcommand} requires --id`);
+      requireText(options, "version", `capability ${subcommand} requires --version`);
+    }
+    if (subcommand === "configure") requireText(options, "config", "capability configure requires --config <json>");
+    if (subcommand === "route") requireText(options, "intent", "capability route requires --intent");
+    if (subcommand === "invoke") requireText(options, "operation", "capability invoke requires --operation");
+    if (["result", "evidence"].includes(subcommand)) requireText(options, "result_id", `capability ${subcommand} requires --result-id`);
+  }
+  if (command === "runtime") {
+    if (!["context", "assess", "decisions"].includes(subcommand)) throw new AiOsError("CLI_USAGE", "Unknown runtime command", { subcommand });
+    if (["context", "assess"].includes(subcommand)) {
+      requireText(options, "request_id", `runtime ${subcommand} requires --request-id`);
+      requireText(options, "request_ref", `runtime ${subcommand} requires --request-ref`);
+    }
+    if (subcommand === "assess") {
+      requireText(options, "response", "runtime assess requires --response");
+      requireText(options, "target", "runtime assess requires --target");
+    }
+  }
 }
 
 function parseJsonInput(value, label = "--input") {
@@ -129,11 +192,11 @@ function parseContextPacket(path) {
 export async function runCli(argv, { registry = defaultRegistry } = {}) {
   let kernel;
   try {
-    const { command, subcommand, options } = parseArgs(argv);
-    if (!command || command === "help") {
+    if (!argv.length || argv[0] === "help" || argv.includes("-h") || argv.includes("--help")) {
       print(usage());
       return;
     }
+    const { command, subcommand, options } = parseArgs(argv);
     if (command === "onboard") {
       if (!options.state) throw new AiOsError("CLI_USAGE", `onboard ${subcommand || ""} requires --state <private-path>`);
       if (subcommand === "start") {
@@ -146,39 +209,61 @@ export async function runCli(argv, { registry = defaultRegistry } = {}) {
         print(previewPersonalOnboarding({ statePath: options.state, registry }));
       } else if (subcommand === "approve") {
         if (!options.preview_hash) throw new AiOsError("CLI_USAGE", "onboard approve requires --preview-hash");
-        print(approvePersonalOnboarding({
+        const creation = approvePersonalOnboarding({
           statePath: options.state,
           previewHash: options.preview_hash,
           approved: options.approve === true,
           registry,
-        }));
+        });
+        const active = options.select === true ? selectActiveInstance(creation.instance_root) : null;
+        print(active ? { ...creation, active_instance: active } : creation);
       } else if (subcommand === "status") {
         print(personalOnboardingStatus({ statePath: options.state, registry }));
       } else throw new AiOsError("CLI_USAGE", "Unknown onboard command", { subcommand });
       return;
     }
-    const instance = options.instance || defaultInstanceRoot();
     if (command === "registry") {
       print(registry.list());
       return;
     }
+    if (command === "instance") {
+      if (subcommand === "diagnose") {
+        requireText(options, "instance", "instance diagnose requires --instance <path>");
+        print(diagnoseInstance(options.instance));
+      } else if (subcommand === "select") {
+        requireText(options, "instance", "instance select requires --instance <path>");
+        print(selectActiveInstance(options.instance));
+      } else if (subcommand === "current") {
+        print(activeInstanceStatus());
+      } else throw new AiOsError("CLI_USAGE", "Unknown instance command", { subcommand });
+      return;
+    }
     if (command === "backup") {
-      if (!options.backup) throw new AiOsError("CLI_USAGE", "backup requires --backup <empty-path>");
+      requireText(options, "backup", "backup requires --backup <empty-path>");
+      const instance = resolveActiveInstance(options.instance || null);
       print(await backupInstance(instance, options.backup));
       return;
     }
     if (command === "restore") {
-      if (!options.backup) throw new AiOsError("CLI_USAGE", "restore requires --backup <path>");
-      print(restoreInstance(options.backup, instance));
+      requireText(options, "backup", "restore requires --backup <path>");
+      requireText(options, "instance", "restore requires --instance <empty-instance-path>");
+      print(restoreInstance(options.backup, options.instance));
       return;
     }
-    if (command === "init" && (options.mode !== "ATLAS_FIXTURE" || options.confirm_synthetic !== true)) {
-      throw new AiOsError("ONBOARDING_REQUIRED", "Generic instances must use onboard start, answer, preview and explicit approve; Atlas requires --mode ATLAS_FIXTURE --confirm-synthetic");
+    if (command === "init") {
+      requireText(options, "instance", "init requires --instance <path>");
+      if (options.mode !== "ATLAS_FIXTURE" || options.confirm_synthetic !== true) {
+        throw new AiOsError("ONBOARDING_REQUIRED", "Personal instances must use onboard start, answer, preview and explicit approve; Atlas requires --mode ATLAS_FIXTURE --confirm-synthetic");
+      }
+      kernel = new AiOsKernel(options.instance, { registry });
+      print(kernel.initializeAtlas());
+      return;
     }
 
+    validateOperationalInvocation(command, subcommand, options);
+    const instance = resolveActiveInstance(options.instance || null);
     kernel = new AiOsKernel(instance, { registry });
-    if (command === "init") print(kernel.initializeAtlas());
-    else if (command === "capture" && subcommand === "confirmed") {
+    if (command === "capture" && subcommand === "confirmed") {
       if (!options.record) throw new AiOsError("CLI_USAGE", "capture confirmed requires --record <json>");
       print(kernel.captureConfirmed({ ...common(options, kernel), record: parseJsonInput(options.record, "--record") }));
     }
