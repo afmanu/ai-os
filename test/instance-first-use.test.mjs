@@ -25,6 +25,21 @@ function hash(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+function createReadyInstance({ instanceRoot, statePath, displayName, localAppData }) {
+  command(["onboard", "start", "--state", statePath, "--instance", instanceRoot], { localAppData });
+  command(["onboard", "answer", "--state", statePath, "--answers", JSON.stringify({
+    identity: { display_name: displayName },
+    activity: "Maintains fictional local projects",
+    objectives: ["Preserve fictional continuity"],
+    sources: [],
+    capabilities: [],
+  })], { localAppData });
+  const preview = command(["onboard", "preview", "--state", statePath], { localAppData }).output;
+  const created = command(["onboard", "approve", "--state", statePath, "--preview-hash", preview.preview_hash, "--approve"], { localAppData }).output;
+  assert.equal(created.status, "CREATED");
+  return command(["instance", "diagnose", "--instance", instanceRoot], { localAppData }).output;
+}
+
 test("help, comandos inválidos y rutas ausentes no crean estado", (t) => {
   const root = tempRoot("ai-os-first-use-empty-");
   const localAppData = join(root, "local-app-data");
@@ -139,4 +154,49 @@ test("una instancia READY se selecciona explícitamente y persiste entre proceso
   assert.equal(recovered.records.length, 1);
   assert.equal(recovered.records[0].record_id, record.record_id);
   assert.equal(recovered.raw_conversation_included, false);
+});
+
+test("una selección activa no acepta la identidad de otra instancia READY", (t) => {
+  const root = tempRoot("ai-os-first-use-identity-");
+  const localAppData = join(root, "local-app-data");
+  const firstRoot = join(root, "instances", "fictional-first");
+  const secondRoot = join(root, "instances", "fictional-second");
+  t.after(() => removeRoot(root));
+
+  const first = createReadyInstance({
+    instanceRoot: firstRoot,
+    statePath: join(root, "onboarding", "fictional-first.json"),
+    displayName: "Avery First",
+    localAppData,
+  });
+  const second = createReadyInstance({
+    instanceRoot: secondRoot,
+    statePath: join(root, "onboarding", "fictional-second.json"),
+    displayName: "Avery Second",
+    localAppData,
+  });
+  assert.equal(first.state, "READY");
+  assert.equal(second.state, "READY");
+  assert.notEqual(first.instance_id, second.instance_id);
+
+  command(["instance", "select", "--instance", firstRoot], { localAppData });
+  const selectionPath = join(localAppData, "ai-os", "active-instance.json");
+  const selection = JSON.parse(readFileSync(selectionPath, "utf8"));
+  assert.equal(selection.instance_id, first.instance_id);
+  selection.instance_root = secondRoot;
+  writeFileSync(selectionPath, `${JSON.stringify(selection, null, 2)}\n`, "utf8");
+
+  const storePaths = [
+    join(firstRoot, "kernel.sqlite"),
+    join(firstRoot, "task-source.sqlite"),
+    join(secondRoot, "kernel.sqlite"),
+    join(secondRoot, "task-source.sqlite"),
+  ];
+  const before = storePaths.map(hash);
+
+  const current = command(["instance", "current"], { expectedStatus: 1, localAppData });
+  assert.equal(current.error.code, "ACTIVE_INSTANCE_IDENTITY_MISMATCH");
+  const denied = command(["records", "list"], { expectedStatus: 1, localAppData });
+  assert.equal(denied.error.code, "ACTIVE_INSTANCE_IDENTITY_MISMATCH");
+  assert.deepEqual(storePaths.map(hash), before);
 });

@@ -120,15 +120,36 @@ export function activeInstanceStatus() {
   } catch (error) {
     throw new AiOsError("ACTIVE_INSTANCE_SELECTION_INVALID", "Active instance selection is not valid JSON", { selection_path: selectionPath, cause: error.message });
   }
-  invariant(selection?.schema === SELECTION_SCHEMA && typeof selection.instance_root === "string", "ACTIVE_INSTANCE_SELECTION_INVALID", "Active instance selection has an unsupported format", { selection_path: selectionPath });
+  invariant(
+    selection?.schema === SELECTION_SCHEMA
+      && typeof selection.instance_root === "string"
+      && typeof selection.instance_id === "string"
+      && selection.instance_id.length > 0,
+    "ACTIVE_INSTANCE_SELECTION_INVALID",
+    "Active instance selection has an unsupported format",
+    { selection_path: selectionPath },
+  );
   const instanceRoot = resolveInstanceRoot(selection.instance_root);
+  const diagnostic = diagnoseInstance(instanceRoot);
+  if (diagnostic.instance_id && diagnostic.instance_id !== selection.instance_id) {
+    throw new AiOsError("ACTIVE_INSTANCE_IDENTITY_MISMATCH", "Active instance selection does not match the instance stored at its path", {
+      selection_path: selectionPath,
+      instance_root: instanceRoot,
+      selected_instance_id: selection.instance_id,
+      diagnosed_instance_id: diagnostic.instance_id,
+      next_steps: [
+        "Run instance diagnose --instance <path>",
+        "Select the intended READY instance explicitly",
+      ],
+    });
+  }
   return {
     schema: SELECTION_SCHEMA,
     selected: true,
     selection_path: selectionPath,
     instance_root: instanceRoot,
     selected_at: selection.selected_at || null,
-    diagnostic: diagnoseInstance(instanceRoot),
+    diagnostic,
   };
 }
 
