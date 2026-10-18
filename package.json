@@ -24,8 +24,8 @@
     "dashboard": "node --no-warnings ./bin/ai-os.mjs dashboard",
     "build:dashboard": "esbuild ./src/dashboard/client/app.js --bundle --format=esm --minify --outfile=./src/dashboard/dist/app.js --target=es2022",
     "test": "npm run test:product",
-    "test:product": "node --no-warnings --test --test-concurrency=1 ./test/atlas.test.mjs ./test/capability-system.test.mjs ./test/codex-native.test.mjs ./test/content-os-read.test.mjs ./test/contracts.test.mjs ./test/dashboard.test.mjs ./test/generic-core.test.mjs ./test/meeting-brief.test.mjs",
-    "test:generic": "node --no-warnings --test --test-concurrency=1 ./test/generic-core.test.mjs",
+    "test:product": "node --no-warnings --test --test-concurrency=1 ./test/atlas.test.mjs ./test/capability-system.test.mjs ./test/codex-native.test.mjs ./test/content-os-read.test.mjs ./test/contracts.test.mjs ./test/dashboard.test.mjs ./test/generic-core.test.mjs ./test/instance-first-use.test.mjs ./test/meeting-brief.test.mjs",
+    "test:generic": "node --no-warnings --test --test-concurrency=1 ./test/generic-core.test.mjs ./test/instance-first-use.test.mjs",
     "test:dashboard": "node --no-warnings --test --test-concurrency=1 ./test/dashboard.test.mjs"
   },
   "dependencies": {

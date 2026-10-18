@@ -62,12 +62,22 @@ La raíz debe ser el worktree Git exacto. AI OS no descubre repositorios ni ampl
 
 ```powershell
 npm run cli -- onboard preview --state <private-state-path>
-npm run cli -- onboard approve --state <private-state-path> --preview-hash 'sha256:<preview-hash>' --approve
+npm run cli -- onboard approve --state <private-state-path> --preview-hash 'sha256:<preview-hash>' --approve --select
 ```
 
 Sin `--approve`, con un hash distinto o sin preview, la instancia no se crea. La aprobación repetida del mismo preview devuelve el resultado previo sin duplicar estado.
 
 La instancia inicial usa `mode: PERSONAL`, `seed: NONE`, runtime `CODEX`, cero proyectos, cero tareas y conexiones externas desactivadas.
+
+`--select` es una selección explícita: guarda la ruta recién aprobada como instancia activa para otros procesos y sesiones. También puede hacerse después, pero solo sobre una instancia `READY`:
+
+```powershell
+npm run cli -- instance diagnose --instance <private-instance-path>
+npm run cli -- instance select --instance <private-instance-path>
+npm run cli -- instance current
+```
+
+El diagnóstico es read-only y devuelve `ABSENT`, `PARTIAL` o `READY`. Los comandos operativos no crean stores: exigen `--instance` o una selección activa válida. Si una ruta está `PARTIAL`, reanuda y completa su onboarding o elige otra instancia; AI OS no la adopta ni repara automáticamente.
 
 Las conexiones externas no se preconfiguran durante ONBOARD. Después de crear la instancia pueden proponerse con `connection add`, congelarse con `connection preview` y activarse únicamente con la aprobación del hash exacto. Esto no modifica el borrador aprobado ni exige crear otra instancia.
 

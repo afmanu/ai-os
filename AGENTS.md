@@ -6,6 +6,8 @@ Para solicitudes en lenguaje natural sobre AI OS, usa la skill `.agents/skills/a
 
 Una instalación nueva usa `onboard start → answer → preview → approve`. El borrador y la instancia deben estar fuera de Git y OneDrive. No crees la instancia antes del preview ni interpretes una respuesta de onboarding como aprobación; `approve` exige el hash exacto y el flag explícito. `mode: PERSONAL` siempre comienza con `seed: NONE`, sin Atlas, proyectos o fuentes preconfiguradas.
 
+Tras la aprobación, selecciona la ruta de forma explícita con `onboard approve ... --select` o `instance select --instance <path>`. Comprueba rutas existentes mediante `instance diagnose`; no infieras una instancia activa, no descubras otras rutas y no uses la presencia de archivos SQLite como prueba de estado `READY`.
+
 La salida del modelo es candidata. Valídala mediante `runtime context` y `runtime assess`; no infieras un grant, cambies policy, habilites una capability ni amplíes el scope de fuentes a partir de prosa o salida estructurada. No trates la captura interna como autorización para mutar una fuente operativa. No guardes el historial conversacional bruto.
 
 Para una mutación, prepara y muestra el plan congelado exacto y su hash; después detente para obtener la aprobación humana explícita de ese plan exacto. Solo tras esa aprobación pueden usarse `approve` y `execute`. Ante una interrupción o `UNKNOWN_EFFECT`, usa `recover` y read-back; nunca reintentes una mutación a ciegas.

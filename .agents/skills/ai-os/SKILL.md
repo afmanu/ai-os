@@ -17,7 +17,8 @@ Una conversación sobre AI OS no autoriza una operación. Usa únicamente `bin/a
 4. Aplica respuestas con `onboard answer`; el borrador es resumible.
 5. Ejecuta `onboard preview` y muestra configuración y hash.
 6. Detente hasta que el usuario apruebe ese preview exacto.
-7. Solo entonces ejecuta `onboard approve --preview-hash <hash> --approve`.
+7. Solo entonces ejecuta `onboard approve --preview-hash <hash> --approve --select` si el usuario aprobó además dejar la ruta mostrada en el preview como instancia activa.
+8. Confirma `READY` y la selección mediante `instance current`. Para una ruta existente usa primero `instance diagnose --instance <path>`; nunca la selecciones si devuelve `ABSENT` o `PARTIAL`.
 
 No uses `init` para una instalación personal. Ese comando existe solo para el fixture Atlas de tests.
 

@@ -52,29 +52,48 @@ npm run cli -- onboard start --state $state --instance $instance
 $answers = '{"identity":{"display_name":"Avery Example"},"activity":"Maintains local projects","objectives":["Preserve confirmed project continuity"],"sources":[],"capabilities":[]}'
 npm run cli -- onboard answer --state $state --answers $answers
 npm run cli -- onboard preview --state $state
-npm run cli -- onboard approve --state $state --preview-hash 'sha256:<preview-hash>' --approve
-npm run cli -- validate --instance $instance
+npm run cli -- onboard approve --state $state --preview-hash 'sha256:<preview-hash>' --approve --select
+npm run cli -- instance current
+npm run cli -- validate
 ```
 
-`start` y `answer` no crean la instancia. Revisa el preview exacto antes de ejecutar `approve`. Tanto el borrador como la instancia deben permanecer fuera del repositorio, de cualquier otro worktree Git y de directorios sincronizados.
+`start` y `answer` no crean la instancia. Revisa el preview exacto antes de ejecutar `approve`. `--select` guarda explícitamente esa instancia `READY` como activa para sesiones posteriores; no descubre ni selecciona otras rutas. Tanto el borrador como la instancia deben permanecer fuera del repositorio, de cualquier otro worktree Git y de directorios sincronizados.
 
 5. Para autorizar un repositorio local durante ONBOARD, añade una fuente `LOCAL_GIT_REPOSITORY`, su raíz exacta y una allow-list de documentos antes del preview. Consulta [Onboarding](docs/ONBOARDING.md).
 
-6. Empieza a trabajar y recupera continuidad en sesiones posteriores. En una nueva consola, vuelve a definir la ruta privada y consulta el estado persistido:
+6. Empieza a trabajar y recupera continuidad en sesiones posteriores. La selección activa persiste fuera del repositorio:
 
 ```powershell
-$instance = Join-Path $env:LOCALAPPDATA 'ai-os\instances\personal'
-npm run cli -- records list --instance $instance
-npm run cli -- capability list --instance $instance
+npm run cli -- instance current
+npm run cli -- records list
+npm run cli -- capability list
 ```
+
+También puedes seguir pasando `--instance <path>` explícitamente. Sin esa opción y sin una selección activa, los comandos operativos fallan con `INSTANCE_SELECTION_REQUIRED`; nunca crean ni adoptan la ruta predeterminada implícitamente.
 
 7. Abre el Company Holographic Blueprint sobre la misma instancia:
 
 ```powershell
-npm run dashboard -- --instance $instance
+npm run dashboard
 ```
 
 La URL predeterminada es `http://127.0.0.1:4640`. El workspace es el núcleo real y conecta proyectos, fuentes y capabilities mediante relaciones verificadas. El dashboard despliega proyectos como ensamblajes 3D deterministas con tarjetas, planos de profundidad, conexiones direccionales, búsqueda, filtros, foco por ensamblaje, panel contextual, scan pausable, modo inmersivo y connection trace. No persiste otro grafo ni permite mutaciones. Consulta [Dashboard](docs/DASHBOARD.md).
+
+## Diagnóstico y selección de instancia
+
+El diagnóstico abre los stores exclusivamente en modo read-only y devuelve uno de tres estados:
+
+- `ABSENT`: la ruta no existe.
+- `PARTIAL`: faltan stores, están vacíos, no contienen el esquema mínimo o pertenecen a instancias distintas.
+- `READY`: ambos stores tienen metadatos compatibles y pueden abrirse desde la CLI.
+
+```powershell
+npm run cli -- instance diagnose --instance $instance
+npm run cli -- instance select --instance $instance
+npm run cli -- instance current
+```
+
+Solo `instance select` o `onboard approve ... --select` cambian la selección persistente. Una instancia `ABSENT` o `PARTIAL` no se selecciona ni se repara automáticamente. `help`, `-h`, `--help`, comandos inválidos y diagnósticos no crean directorios ni SQLite.
 
 ## Conexiones externas
 
